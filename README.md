@@ -28,19 +28,18 @@ Plateful is a recipe management application that allows users to create, share, 
 ## Project Structure 📂
 
 .
-|- app
-| |- main.py # הקובץ המרכזי של ה-API
-| |- models.py # מחלקות הנתונים (מתכונים, משתמשים וכו')
-| |- services.py # לוגיקה עסקית (חישוב ערכים תזונתיים, יצירת רשימות קניות)
-| |- routes # כל ה-Endpoints
-| |- recipes.py # ניהול מתכונים
-| |- users.py # ניהול משתמשים
-| |- unit_tests.py # בדיקות יחידה
-| |- requirements.txt # ספריות דרושות
+app
+| |- init.py # Init file for the app package
+| |- main.py # FastAPI application entry point
+| |- models.py # Pydantic models for data validation
+| |- services.py # Business logic for managing recipes and users
+| |- utils.py # Helper functions (e.g., nutritional calculations)
+| |- unit_tests.py # Unit tests for application logic
+| |- requirements.txt # Project dependencies
+| |- integration_test.py # Integration tests to test the entire application
 |
-|- integration_test.py # בדיקות אינטגרציה
-|- Dockerfile # קובץ Docker
-|- README.md # הסבר על הפרויקט
+|- Dockerfile # Dockerfile to containerize the application
+|- README.md # Project documentation
 
 ## Setup Instructions ❄️
 
