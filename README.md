@@ -27,7 +27,7 @@ Plateful is a recipe management application that allows users to create, share, 
 
 ## Project Structure 📂
 
-.
+```
 app
 | |- init.py # Init file for the app package
 | |- main.py # FastAPI application entry point
@@ -40,7 +40,7 @@ app
 |
 |- Dockerfile # Dockerfile to containerize the application
 |- README.md # Project documentation
-
+```
 ## Setup Instructions ❄️
 
 ### Prerequisites
