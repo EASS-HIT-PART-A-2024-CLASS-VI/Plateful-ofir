@@ -1,31 +1,36 @@
+
 services:
   postgres:
-    image: postgres:latest
-    container_name: plateful_postgres
+    image: postgres:17
+    container_name: plateful
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: plateful
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
-      - plateful-network
+      - plateful_network
 
-  web:
+  app:
     build: .
-    container_name: plateful_web
+    container_name: plateful_app
     depends_on:
       - postgres
+    environment:
+      DATABASE_URL: postgres://postgres:password123@plateful:5432/plateful
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
     networks:
-      - plateful-network
-    entrypoint: ["./wait-for-it.sh", "postgres:5432", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-networks:
-  plateful-network:
+      - plateful_network
 
 volumes:
   postgres_data:
+
+networks:
+  plateful_network:
+    driver: bridge

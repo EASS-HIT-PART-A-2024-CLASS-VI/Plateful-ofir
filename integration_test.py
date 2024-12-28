@@ -1,4 +1,6 @@
 import subprocess
+import requests
+
 
 def test_api():
     # הרצת ה-Docker container
