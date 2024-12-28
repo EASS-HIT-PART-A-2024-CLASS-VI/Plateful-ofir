@@ -17,17 +17,11 @@ Plateful is a recipe management application that allows users to create, share, 
 ## Features 🛠
 
 - **Language:** Python (FastAPI)
-- **Database:** PostgreSQL (with SQLAlchemy ORM)
-- **Validation:** Pydantic
-- **Authentication:** OAuth2 with JWT
-- **Password Hashing:** Passlib (bcrypt)
-- **Testing:** Pytest
 - **Containerization:** Docker
-- **Build System:** Uvicorn
 
 ## Project Structure 📂
 
-.
+```
 app
 | |- init.py # Init file for the app package
 | |- main.py # FastAPI application entry point
@@ -40,7 +34,7 @@ app
 |
 |- Dockerfile # Dockerfile to containerize the application
 |- README.md # Project documentation
-
+```
 ## Setup Instructions ❄️
 
 ### Prerequisites
