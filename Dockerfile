@@ -1,25 +1,20 @@
-# Use the official Python image from Docker Hub
-FROM python:3.8-slim
+# Use the official FastAPI image as a base
+FROM python:3.9-slim
 
-# Install system dependencies
-RUN apt-get update \
-    && apt-get install -y libpq-dev gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set up the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy the requirements.txt file into the container
-COPY requirements.txt /app/
+# Copy the requirements.txt file
+COPY requirements.txt .
 
-# Install the Python dependencies
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application files into the container
-COPY . /app
+# Copy the application code
+COPY . .
 
-# Expose the port FastAPI will run on
+# Expose the port that FastAPI runs on
 EXPOSE 8000
 
-# Command to run FastAPI app with Uvicorn
+# Start FastAPI with Uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

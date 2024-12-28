@@ -1,4 +1,3 @@
-
 services:
   postgres:
     image: postgres:latest
@@ -23,6 +22,7 @@ services:
       - "8000:8000"
     networks:
       - plateful-network
+    entrypoint: ["./wait-for-it.sh", "postgres:5432", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 networks:
   plateful-network:
