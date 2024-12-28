@@ -3,8 +3,15 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
+from app.database import Base, engine, SessionLocal
+from app.models import Recipe
+
+
 
 app = FastAPI()
+
+# יצירת הטבלאות במסד הנתונים
+Base.metadata.create_all(bind=engine)
 
 # דגם של מתכון
 class Recipe(BaseModel):

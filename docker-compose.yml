@@ -1,0 +1,31 @@
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: plateful_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: plateful
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - plateful-network
+
+  web:
+    build: .
+    container_name: plateful_web
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    networks:
+      - plateful-network
+
+networks:
+  plateful-network:
+
+volumes:
+  postgres_data:
