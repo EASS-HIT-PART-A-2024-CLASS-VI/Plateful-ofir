@@ -8,12 +8,6 @@ from services import upload_image, get_image
 
 app = FastAPI()
 
-
-@app.get("/")
-async def root():
-    return {"message": "Hello, Plateful!"}
-
-
 # Dependency for getting DB session
 def get_db():
     db = database.SessionLocal()
@@ -22,19 +16,26 @@ def get_db():
     finally:
         db.close()
 
-# דגם נתונים עבור יצירת מתכון
+# Data model for creating a recipe
+class IngredientBase(BaseModel):
+    name: str
+    quantity: str
+
 class RecipeCreate(BaseModel):
     name: str
     image: str
     cooking_time: int
     categories: str
     tags: Optional[str] = None
-    ingredients: List[dict]
+    ingredients: List[IngredientBase]
 
-# דגם נתונים עבור יצירת משתמש
 class UserCreate(BaseModel):
     username: str
     preferences: Optional[str] = None
+
+@app.get("/")
+async def root():
+    return {"message": "Hello, Plateful!"}
 
 @app.post("/recipes/")
 def create_recipe(recipe: RecipeCreate, db: Session = Depends(get_db)):
@@ -65,3 +66,4 @@ def get_user(username: str, db: Session = Depends(get_db)):
 @app.get("/images/{image_name}")
 def get_image_endpoint(image_name: str):
     return get_image(image_name)
+
