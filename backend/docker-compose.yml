@@ -1,4 +1,3 @@
-
 services:
   postgres:
     image: postgres:17
@@ -20,7 +19,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: postgres://postgres:password123@plateful:5432/plateful
+      DATABASE_URL: postgres://postgres:password123@postgres:5432/plateful
     ports:
       - "8000:8000"
     volumes:

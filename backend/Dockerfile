@@ -1,20 +1,15 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM python:3.10-slim
 
-# Set the working directory in the container
-WORKDIR /app
+WORKDIR /backend
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Copy requirements.txt to the working directory
+COPY requirements.txt .
 
-# Install dependencies
+# Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 8000 available to the world outside this container
-EXPOSE 8000
+# Copy the entire project to the working directory
+COPY . .
 
-# Define environment variable
-ENV NAME World
-
-# Run FastAPI with Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

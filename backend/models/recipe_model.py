@@ -1,5 +1,3 @@
-# models.py (SQLAlchemy models and Pydantic models)
-
 from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -15,7 +13,6 @@ class Ingredient(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     quantity = Column(String)
-
     recipe_id = Column(Integer, ForeignKey('recipes.id'))
     recipe = relationship("Recipe", back_populates="ingredients")
 
@@ -29,33 +26,35 @@ class Recipe(Base):
     cooking_time = Column(Integer)
     categories = Column(String)
     tags = Column(String)
-
     ingredients = relationship("Ingredient", back_populates="recipe")
+    nutritional_info = relationship("NutritionalInfo", uselist=False, back_populates="recipe")
+    rating = Column(Float, default=0)  # Add a rating field for recipes
 
     def __repr__(self):
         return f"<Recipe(name={self.name}, cooking_time={self.cooking_time})>"
 
-# SQLAlchemy Model for UserProfile
-class UserProfile(Base):
-    __tablename__ = 'user_profiles'
+# SQLAlchemy Model for NutritionalInfo
+class NutritionalInfo(Base):
+    __tablename__ = 'nutritional_info'
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    preferences = Column(String)  # You can upgrade to JSON format if necessary
-
-    def __repr__(self):
-        return f"<UserProfile(username={self.username})>"
+    calories = Column(Integer)
+    protein = Column(Float)
+    fat = Column(Float)
+    carbs = Column(Float)
+    recipe_id = Column(Integer, ForeignKey('recipes.id'))
+    recipe = relationship("Recipe", back_populates="nutritional_info")
 
 # Pydantic Model for Ingredient (to create and read ingredients)
 class IngredientBase(BaseModel):
     name: str
-    quantity: str  # Use condecimal if you want to enforce numeric validation for quantities
+    quantity: str
 
 class IngredientCreate(IngredientBase):
     pass
 
 class IngredientRead(IngredientBase):
-    id: int
+    id: int  # Adding the ID for reading ingredients
 
     class Config:
         orm_mode = True  # This tells Pydantic to treat the SQLAlchemy models as dictionaries
@@ -74,7 +73,7 @@ class NutritionalInfoRead(NutritionalInfoBase):
     class Config:
         orm_mode = True
 
-# Pydantic Model for Recipe (to create and read recipes)
+# Pydantic Model for Recipe (for creating and reading recipes)
 class RecipeBase(BaseModel):
     name: str
     image: str
@@ -83,26 +82,12 @@ class RecipeBase(BaseModel):
     tags: Optional[str] = None
 
 class RecipeCreate(RecipeBase):
-    ingredients: List[IngredientCreate]  # List of ingredients to create the recipe
+    ingredients: List[IngredientCreate]  # Ingredients to create the recipe
 
 class RecipeRead(RecipeBase):
     id: int
     ingredients: List[IngredientRead]  # List of ingredients for reading
     nutritional_info: NutritionalInfoRead  # Nutritional information for reading
-
-    class Config:
-        orm_mode = True
-
-# Pydantic Model for UserProfile (to create and read user profiles)
-class UserProfileBase(BaseModel):
-    username: str
-    preferences: Optional[dict]  # Using a dictionary for preferences
-
-class UserProfileCreate(UserProfileBase):
-    pass
-
-class UserProfileRead(UserProfileBase):
-    id: int
 
     class Config:
         orm_mode = True

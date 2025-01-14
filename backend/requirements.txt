@@ -6,4 +6,4 @@ httpx
 sqlalchemy
 databases
 psycopg2-binary
-
+redis
