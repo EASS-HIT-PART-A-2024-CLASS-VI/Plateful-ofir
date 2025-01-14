@@ -45,8 +45,8 @@ Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, main
 ├── models
 |    ├── __init__.py          # App package initialization
 |    ├── recipe_model.py      # Pydantic and/or SQLAlchemy models for recipes.
+|    ├── base.py
 |    ├── user_model.py        # Pydantic and/or SQLAlchemy models for users.
-
 ├── services
 |    ├── __init__.py          # App package initialization
 |    ├── image_service.py     # Logic for handling image-related functionality.

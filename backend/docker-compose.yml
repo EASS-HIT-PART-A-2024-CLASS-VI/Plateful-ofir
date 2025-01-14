@@ -2,36 +2,29 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres:latest
     container_name: plateful_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: plateful
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    networks:
-      - plateful_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: plateful_app
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:password123@postgres:5432/plateful
+      DATABASE_URL: "postgresql://postgres:password123@postgres:5432/plateful"
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-    networks:
-      - plateful_network
-
-volumes:
-  postgres_data:
-
-networks:
-  plateful_network:
-    driver: bridge

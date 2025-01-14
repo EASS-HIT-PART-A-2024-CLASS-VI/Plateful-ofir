@@ -1,9 +1,10 @@
 fastapi
 uvicorn
-pydantic
+pydantic>=2.0
 pytest
 httpx
 sqlalchemy
 databases
 psycopg2-binary
 redis
+python-multipart
