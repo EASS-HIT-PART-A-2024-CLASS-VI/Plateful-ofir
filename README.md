@@ -93,11 +93,11 @@ Plateful includes both unit tests and integration tests to ensure reliability an
 
 - **Run Unit Tests:**
   ```bash
-  pytest app/unit_tests.py
+  pytest backend/unit_tests.py
   ```
 - **Run Integration Tests:**
   ```bash
-  pytest app/integration_test.py
+  pytest backend/integration_test.py
   ```
 - **Run All Tests:**
   ```bash
