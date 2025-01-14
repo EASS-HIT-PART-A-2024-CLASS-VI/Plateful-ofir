@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, UploadFile, File
-from backend import database
+from db import database
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
@@ -14,6 +14,10 @@ from services.image_service import upload_image, get_image
 
 
 app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Plateful API"}
 
 # Dependency for getting DB session
 def get_db():

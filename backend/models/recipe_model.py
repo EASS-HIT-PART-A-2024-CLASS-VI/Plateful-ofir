@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from pydantic import BaseModel
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import relationship, declarative_base
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 Base = declarative_base()
@@ -24,14 +24,14 @@ class Recipe(Base):
     name = Column(String, index=True)
     image = Column(String)
     cooking_time = Column(Integer)
-    categories = Column(String)
-    tags = Column(String)
+    categories = Column(ARRAY(String))  # List of categories
+    tags = Column(ARRAY(String), nullable=True)  # Optional list of tags
     ingredients = relationship("Ingredient", back_populates="recipe")
     nutritional_info = relationship("NutritionalInfo", uselist=False, back_populates="recipe")
-    rating = Column(Float, default=0)  # Add a rating field for recipes
+    rating = Column(Float, default=0)  # Default rating
 
     def __repr__(self):
-        return f"<Recipe(name={self.name}, cooking_time={self.cooking_time})>"
+        return f"<Recipe(id={self.id}, name='{self.name}', cooking_time={self.cooking_time})>"
 
 # SQLAlchemy Model for NutritionalInfo
 class NutritionalInfo(Base):
@@ -45,7 +45,7 @@ class NutritionalInfo(Base):
     recipe_id = Column(Integer, ForeignKey('recipes.id'))
     recipe = relationship("Recipe", back_populates="nutritional_info")
 
-# Pydantic Model for Ingredient (to create and read ingredients)
+# Pydantic Model for Ingredient
 class IngredientBase(BaseModel):
     name: str
     quantity: str
@@ -55,11 +55,9 @@ class IngredientCreate(IngredientBase):
 
 class IngredientRead(IngredientBase):
     id: int  # Adding the ID for reading ingredients
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True  # This tells Pydantic to treat the SQLAlchemy models as dictionaries
-
-# Pydantic Model for NutritionalInfo (for reading nutritional data)
+# Pydantic Model for NutritionalInfo
 class NutritionalInfoBase(BaseModel):
     calories: int
     protein: float
@@ -69,17 +67,16 @@ class NutritionalInfoBase(BaseModel):
 class NutritionalInfoRead(NutritionalInfoBase):
     id: int
     recipe_id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
-
-# Pydantic Model for Recipe (for creating and reading recipes)
+# Pydantic Model for Recipe
 class RecipeBase(BaseModel):
     name: str
     image: str
     cooking_time: int
-    categories: str
-    tags: Optional[str] = None
+    categories: List[str]  # A list of categories
+    tags: Optional[List[str]] = None  # Optional list of tags
+    rating: float = 0.0  # Default rating
 
 class RecipeCreate(RecipeBase):
     ingredients: List[IngredientCreate]  # Ingredients to create the recipe
@@ -88,6 +85,4 @@ class RecipeRead(RecipeBase):
     id: int
     ingredients: List[IngredientRead]  # List of ingredients for reading
     nutritional_info: NutritionalInfoRead  # Nutritional information for reading
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
