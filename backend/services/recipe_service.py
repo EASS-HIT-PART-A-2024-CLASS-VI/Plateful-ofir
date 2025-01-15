@@ -21,8 +21,18 @@ def calculate_nutritional_info(ingredients: List[Ingredient]) -> NutritionalInfo
     return NutritionalInfo(calories=total_calories, protein=total_protein, fat=total_fat, carbs=total_carbs)
 
 # Function to create a new recipe
-def create_recipe(db: Session, recipe_data):
-    recipe = Recipe(**recipe_data.dict())
+def create_recipe(db, recipe_data):
+    # Extract ingredients from recipe_data
+    ingredients_data = recipe_data.pop("ingredients")
+
+    # Convert ingredient data to SQLAlchemy Ingredient objects
+    ingredients = [Ingredient(**ingredient) for ingredient in ingredients_data]
+
+    # Create Recipe object
+    recipe = Recipe(**recipe_data)
+    recipe.ingredients = ingredients  # Add ingredients to the recipe
+
+    # Add and commit to the database
     db.add(recipe)
     db.commit()
     db.refresh(recipe)

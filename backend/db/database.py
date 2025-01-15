@@ -1,5 +1,4 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from models.base import Base
 
@@ -9,5 +8,13 @@ SQLALCHEMY_DATABASE_URL = "postgresql://postgres:password123@postgres:5432/plate
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Create tables if they do not exist
-Base.metadata.create_all(bind=engine)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Create tables
+def init_db():
+    Base.metadata.create_all(bind=engine)
