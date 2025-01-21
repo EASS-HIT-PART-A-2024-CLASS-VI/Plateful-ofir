@@ -28,3 +28,9 @@ services:
       DATABASE_URL: "postgresql://postgres:password123@postgres:5432/plateful"
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

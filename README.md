@@ -74,15 +74,12 @@ Ensure the following tools are installed:
    git clone https://github.com/EASS-HIT-PART-A-2024-CLASS-VI/Plateful-ofir
    cd plateful
    ```
-2. Build the Docker image:
+
+2. Start the application:
    ```bash
-   docker-compose build
+   docker-compose up --build
    ```
-3. Start the application:
-   ```bash
-   docker-compose up
-   ```
-4. Access the API:  
+3. Access the API:  
    Once the application is running, navigate to: 🔗 http://localhost:8000
 
 ---

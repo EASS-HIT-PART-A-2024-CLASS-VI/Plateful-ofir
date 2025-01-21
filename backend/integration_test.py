@@ -2,38 +2,49 @@ import subprocess
 import requests
 import time
 import pytest
+import os
 
+# In integration_test.py
 @pytest.fixture(scope="module")
 def start_docker():
-    result = subprocess.run(["docker", "run", "-d", "-p", "8000:8000", "backend-app:latest"], capture_output=True, text=True)
-    assert result.returncode == 0, f"Failed to start Docker container: {result.stderr}"
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(current_dir)
+    docker_compose_path = os.path.join(current_dir, 'docker-compose.yml')
     
-    container_id = result.stdout.strip()
-    print(f"Started Docker container with ID: {container_id}")
-
     try:
-        timeout = 60
+        # Start services
+        result = subprocess.run(["docker-compose", "-f", docker_compose_path, "up", "-d"], 
+                              capture_output=True, text=True)
+        assert result.returncode == 0, f"Failed to start Docker Compose: {result.stderr}"
+        
+        print("Waiting for services to be healthy...")
+        timeout = 180
         elapsed_time = 0
-        while elapsed_time < timeout:
+        while (elapsed_time < timeout):
             try:
                 response = requests.get("http://localhost:8000/")
                 if response.status_code == 200:
                     print("API is ready!")
                     break
-            except requests.exceptions.RequestException as e:
-                print(f"Error connecting to API: {e}")
-            time.sleep(2)
-            elapsed_time += 2
-            print(f"Waiting for API to be ready... {elapsed_time}/{timeout} seconds")
-    
-        assert elapsed_time < timeout, "API did not become ready in time"
-    
-        yield container_id
+            except requests.exceptions.ConnectionError:
+                print(f"API not ready, retrying... ({elapsed_time}s/{timeout}s)")
+                # Get container logs for debugging
+                logs = subprocess.run(
+                    ["docker-compose", "-f", docker_compose_path, "logs", "--tail=50"],
+                    capture_output=True, text=True
+                )
+                print(f"Container logs:\n{logs.stdout}")
+            time.sleep(5)
+            elapsed_time += 5
+        
+        if elapsed_time >= timeout:
+            raise TimeoutError("API did not become ready in time")
+            
+        yield
     finally:
-        print("Container logs:")
-        print(subprocess.run(["docker", "logs", container_id], capture_output=True, text=True).stdout)
-        subprocess.run(["docker", "stop", container_id], capture_output=True)
-        subprocess.run(["docker", "rm", container_id], capture_output=True)
+        print("Cleaning up Docker services...")
+        subprocess.run(["docker-compose", "-f", docker_compose_path, "down"], 
+                      capture_output=True)
 
 def test_api_root(start_docker):
     response = requests.get("http://localhost:8000/")
@@ -41,14 +52,85 @@ def test_api_root(start_docker):
     assert response.json() == {"message": "Welcome to Plateful API"}, "Root endpoint response is not as expected"
 
 def test_create_recipe(start_docker):
-    recipe_data = {
-        "name": "Pasta",
-        "image": "image.jpg",
-        "ingredients": [{"name": "Pasta", "quantity": "2 cups"}],
-        "cooking_time": 20,
-        "categories": "Dinner",
-        "tags": "Vegetarian"
+    # First create a test user
+    user_data = {
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": "testpass123",
+        "dietary_preferences": ["NONE"]  # Added missing required field
     }
-    response = requests.post("http://localhost:8000/recipes/", json=recipe_data)
-    assert response.status_code == 200, "Failed to create recipe"
-    assert response.json()["message"] == "Recipe added successfully!", "Recipe creation response is not as expected"
+    
+    try:
+        # Create user
+        user_response = requests.post(
+            "http://localhost:8000/users/",
+            json=user_data,
+            headers={"Content-Type": "application/json"}
+        )
+        assert user_response.status_code == 200, f"Failed to create user: {user_response.text}"
+        user_id = user_response.json().get("id")
+        
+        # Create recipe with valid user_id
+        recipe_data = {
+            "name": "Pasta",
+            "description": "A simple pasta dish",
+            "image": "pasta.jpg",
+            "ingredients": [
+                {
+                    "name": "Pasta",
+                    "quantity": 2.0,
+                    "unit": "cups",
+                    "nutritional_values": {
+                        "calories": 200,
+                        "protein": 7,
+                        "carbs": 42,
+                        "fats": 1
+                    }
+                }
+            ],
+            "cooking_time": 20,
+            "preparation_time": 15,
+            "preparation_steps": "1. Boil water\n2. Cook pasta for 10 minutes\n3. Drain and serve",
+            "difficulty": "EASY",
+            "servings": 4,
+            "categories": "Main Course",
+            "tags": "Italian",
+            "creator_id": user_id,
+            "timers": [
+                {
+                    "step_number": 2,
+                    "duration": 10,
+                    "label": "Cook pasta"
+                }
+            ]
+        }
+
+        print(f"Sending request with data: {recipe_data}")
+        
+        response = requests.post(
+            "http://localhost:8000/recipes/",
+            json=recipe_data,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
+
+        if response.status_code != 200:
+            logs = subprocess.run(
+                ["docker-compose", "logs", "--tail=100"],
+                capture_output=True,
+                text=True
+            )
+            print(f"Container logs:\n{logs.stdout}")
+            pytest.fail(f"Create recipe failed: {response.text}")
+            
+        recipe_id = response.json().get("recipe_id")
+        assert recipe_id is not None, "No recipe_id in response"
+        
+        # Cleanup
+        requests.delete(f"http://localhost:8000/users/{user_id}")
+        requests.delete(f"http://localhost:8000/recipes/{recipe_id}")
+        
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Request failed: {str(e)}")

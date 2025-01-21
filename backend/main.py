@@ -12,15 +12,25 @@ from pydantic import BaseModel, EmailStr
 
 app = FastAPI()
 
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Plateful API"}
+
 # Initialize database
 init_db()
 
 # Pydantic models
+class NutritionalValues(BaseModel):
+    calories: int
+    protein: int
+    carbs: int
+    fats: int
+
 class IngredientCreate(BaseModel):
     name: str
     quantity: float
     unit: str
-    nutritional_values: Dict[str, float]
+    nutritional_values: NutritionalValues
 
 class TimerCreate(BaseModel):
     step_number: int
@@ -49,78 +59,85 @@ async def create_recipe(
     current_user_id: int = 1,  # TODO: Replace with actual auth
     db: Session = Depends(get_db)
 ):
-    # Create recipe
-    db_recipe = Recipe(
-        name=recipe.name,
-        preparation_steps=recipe.preparation_steps,
-        cooking_time=recipe.cooking_time,
-        servings=recipe.servings,
-        categories=recipe.categories,
-        tags=recipe.tags,
-        creator_id=current_user_id
-    )
-    
-    # Add ingredients
-    total_calories = 0
-    total_protein = 0
-    total_carbs = 0
-    total_fats = 0
-    
-    for ing in recipe.ingredients:
-        # בדיקת ערכים תזונתיים
-        required_keys = ["calories", "protein", "carbs", "fats"]
-        missing_keys = [key for key in required_keys if key not in ing.nutritional_values]
-        if missing_keys:
-            raise HTTPException(
-                status_code=400,
-                detail=f"מרכיב '{ing.name}' חסר את המפתחות: {', '.join(missing_keys)}"
+    try:
+        # הוסף לוגים נוספים כאן
+        print(f"Received recipe: {recipe}")
+
+        # Create recipe
+        db_recipe = Recipe(
+            name=recipe.name,
+            preparation_steps=recipe.preparation_steps,
+            cooking_time=recipe.cooking_time,
+            servings=recipe.servings,
+            categories=recipe.categories,
+            tags=recipe.tags,
+            creator_id=current_user_id
+        )
+        
+        # Add ingredients
+        total_calories = 0
+        total_protein = 0
+        total_carbs = 0
+        total_fats = 0
+        
+        for ing in recipe.ingredients:
+            # בדיקת ערכים תזונתיים
+            required_keys = ["calories", "protein", "carbs", "fats"]
+            missing_keys = [key for key in required_keys if key not in ing.nutritional_values]
+            if missing_keys:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"מרכיב '{ing.name}' חסר את המפתחות: {', '.join(missing_keys)}"
+                )
+
+            # בדיקת כמות
+            if ing.quantity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"מרכיב '{ing.name}' חייב להיות עם כמות חיובית, אך התקבלה כמות: {ing.quantity}."
+                )
+
+            # יצירת אובייקט Ingredient
+            db_ingredient = Ingredient(
+                name=ing.name,
+                quantity=ing.quantity,
+                unit=ing.unit,
+                nutritional_values=ing.nutritional_values,
+                recipe=db_recipe
             )
 
-        # בדיקת כמות
-        if ing.quantity <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail=f"מרכיב '{ing.name}' חייב להיות עם כמות חיובית, אך התקבלה כמות: {ing.quantity}."
+            # חישוב ערכים תזונתיים
+            serving_factor = ing.quantity / 100  # הערכים התזונתיים הם לפי 100 גרם/מיליליטר
+            total_calories += ing.nutritional_values["calories"] * serving_factor
+            total_protein += ing.nutritional_values["protein"] * serving_factor
+            total_carbs += ing.nutritional_values["carbs"] * serving_factor
+            total_fats += ing.nutritional_values["fats"] * serving_factor
+
+        
+        # Create nutritional info
+        db_recipe.nutritional_info = NutritionalInfo(
+            calories=total_calories,
+            protein=total_protein,
+            carbs=total_carbs,
+            fats=total_fats,
+            serving_size=1  # Per serving
+        )
+        
+        # Add timers
+        for timer in recipe.timers:
+            db_timer = CookingTimer(
+                step_number=timer.step_number,
+                duration=timer.duration,
+                label=timer.label,
+                recipe=db_recipe
             )
-
-        # יצירת אובייקט Ingredient
-        db_ingredient = Ingredient(
-            name=ing.name,
-            quantity=ing.quantity,
-            unit=ing.unit,
-            nutritional_values=ing.nutritional_values,
-            recipe=db_recipe
-        )
-
-        # חישוב ערכים תזונתיים
-        serving_factor = ing.quantity / 100  # הערכים התזונתיים הם לפי 100 גרם/מיליליטר
-        total_calories += ing.nutritional_values["calories"] * serving_factor
-        total_protein += ing.nutritional_values["protein"] * serving_factor
-        total_carbs += ing.nutritional_values["carbs"] * serving_factor
-        total_fats += ing.nutritional_values["fats"] * serving_factor
-
-    
-    # Create nutritional info
-    db_recipe.nutritional_info = NutritionalInfo(
-        calories=total_calories,
-        protein=total_protein,
-        carbs=total_carbs,
-        fats=total_fats,
-        serving_size=1  # Per serving
-    )
-    
-    # Add timers
-    for timer in recipe.timers:
-        db_timer = CookingTimer(
-            step_number=timer.step_number,
-            duration=timer.duration,
-            label=timer.label,
-            recipe=db_recipe
-        )
-    
-    db.add(db_recipe)
-    db.commit()
-    return {"message": "Recipe created successfully", "recipe_id": db_recipe.id}
+        
+        db.add(db_recipe)
+        db.commit()
+        return {"message": "Recipe created successfully", "recipe_id": db_recipe.id}
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/recipes/")
 async def get_recipes(
