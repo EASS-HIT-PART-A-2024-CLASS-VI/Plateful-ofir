@@ -8,7 +8,7 @@ from models.recipe_model import (
     Recipe, Ingredient, NutritionalInfo, User, 
     ShoppingList, CookingTimer
 )
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr,validator
 
 app = FastAPI()
 
@@ -52,17 +52,59 @@ class UserCreate(BaseModel):
     email: EmailStr
     dietary_preferences: List[str]
 
+# עדכון המודלים של Pydantic עם ולידציה
+class NutritionalValues(BaseModel):
+    calories: int
+    protein: int
+    carbs: int
+    fats: int
+
+    @validator('calories', 'protein', 'carbs', 'fats')
+    def validate_positive(cls, v):
+        if v < 0:
+            raise ValueError("Must be a positive number")
+        return v
+
+class IngredientCreate(BaseModel):
+    name: str
+    quantity: float
+    unit: str
+    nutritional_values: NutritionalValues
+
+    @validator('quantity')
+    def validate_quantity(cls, v):
+        if v <= 0:
+            raise ValueError("Quantity must be positive")
+        return v
+
+    @validator('name')
+    def validate_name(cls, v):
+        if not v.strip():
+            raise ValueError("Name cannot be empty")
+        return v.strip()
+
 # Recipe endpoints
 @app.post("/recipes/")
 async def create_recipe(
     recipe: RecipeCreate,
-    current_user_id: int = 1,  # TODO: Replace with actual auth
+    current_user_id: int = 1,
     db: Session = Depends(get_db)
 ):
     try:
-        # הוסף לוגים נוספים כאן
+        # Validate basic recipe data
+        if recipe.cooking_time < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Cooking time must be positive"
+            )
+        if recipe.servings <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Number of servings must be positive"
+            )
+            
         print(f"Received recipe: {recipe}")
-
+        
         # Create recipe
         db_recipe = Recipe(
             name=recipe.name,
@@ -80,64 +122,89 @@ async def create_recipe(
         total_carbs = 0
         total_fats = 0
         
+        if not recipe.ingredients:
+            raise HTTPException(
+                status_code=400,
+                detail="Recipe must have at least one ingredient"
+            )
+        
         for ing in recipe.ingredients:
-            # בדיקת ערכים תזונתיים
-            required_keys = ["calories", "protein", "carbs", "fats"]
-            missing_keys = [key for key in required_keys if key not in ing.nutritional_values]
-            if missing_keys:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"מרכיב '{ing.name}' חסר את המפתחות: {', '.join(missing_keys)}"
-                )
-
-            # בדיקת כמות
+            # Validate ingredient data
             if ing.quantity <= 0:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"מרכיב '{ing.name}' חייב להיות עם כמות חיובית, אך התקבלה כמות: {ing.quantity}."
+                    detail=f"Ingredient '{ing.name}' must have a positive quantity"
                 )
 
-            # יצירת אובייקט Ingredient
+            # Create ingredient object
             db_ingredient = Ingredient(
                 name=ing.name,
                 quantity=ing.quantity,
                 unit=ing.unit,
-                nutritional_values=ing.nutritional_values,
+                nutritional_values={
+                    "calories": ing.nutritional_values.calories,
+                    "protein": ing.nutritional_values.protein,
+                    "carbs": ing.nutritional_values.carbs,
+                    "fats": ing.nutritional_values.fats
+                },
                 recipe=db_recipe
             )
-
-            # חישוב ערכים תזונתיים
-            serving_factor = ing.quantity / 100  # הערכים התזונתיים הם לפי 100 גרם/מיליליטר
-            total_calories += ing.nutritional_values["calories"] * serving_factor
-            total_protein += ing.nutritional_values["protein"] * serving_factor
-            total_carbs += ing.nutritional_values["carbs"] * serving_factor
-            total_fats += ing.nutritional_values["fats"] * serving_factor
-
+            
+            # Calculate nutritional values
+            serving_factor = ing.quantity / 100
+            total_calories += ing.nutritional_values.calories * serving_factor
+            total_protein += ing.nutritional_values.protein * serving_factor
+            total_carbs += ing.nutritional_values.carbs * serving_factor
+            total_fats += ing.nutritional_values.fats * serving_factor
+            
+            db.add(db_ingredient)
         
         # Create nutritional info
-        db_recipe.nutritional_info = NutritionalInfo(
+        nutritional_info = NutritionalInfo(
             calories=total_calories,
             protein=total_protein,
             carbs=total_carbs,
             fats=total_fats,
-            serving_size=1  # Per serving
+            serving_size=1,
+            recipe=db_recipe
         )
+        db.add(nutritional_info)
         
         # Add timers
         for timer in recipe.timers:
+            if timer.duration <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Timer duration must be positive"
+                )
+                
             db_timer = CookingTimer(
                 step_number=timer.step_number,
                 duration=timer.duration,
                 label=timer.label,
                 recipe=db_recipe
             )
+            db.add(db_timer)
         
-        db.add(db_recipe)
-        db.commit()
-        return {"message": "Recipe created successfully", "recipe_id": db_recipe.id}
+        try:
+            db.add(db_recipe)
+            db.commit()
+            db.refresh(db_recipe)
+            return {"message": "Recipe created successfully", "recipe_id": db_recipe.id}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+            
+    except HTTPException as he:
+        # Re-raise HTTP exceptions
+        raise he
+    except ValueError as ve:
+        # Handle validation errors
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        print(f"Error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        # Handle unexpected errors
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/recipes/")
 async def get_recipes(
@@ -271,6 +338,110 @@ async def rate_recipe(
     recipe.rating = rating
     db.commit()
     return {"message": "Rating updated successfully"}
+
+
+@app.put("/recipes/{recipe_id}")
+async def update_recipe(
+    recipe_id: int,
+    recipe: RecipeCreate,
+    current_user_id: int = Query(..., description="User ID updating the recipe"),
+    db: Session = Depends(get_db)
+):
+    # Check if recipe exists
+    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not db_recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    
+    # Check if user owns the recipe
+    if db_recipe.creator_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this recipe")
+    
+    try:
+        # Update basic recipe information
+        db_recipe.name = recipe.name
+        db_recipe.preparation_steps = recipe.preparation_steps
+        db_recipe.cooking_time = recipe.cooking_time
+        db_recipe.servings = recipe.servings
+        db_recipe.categories = recipe.categories
+        db_recipe.tags = recipe.tags
+        
+        # Delete existing ingredients and timers
+        db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
+        db.query(CookingTimer).filter(CookingTimer.recipe_id == recipe_id).delete()
+        
+        # Add new ingredients
+        total_calories = 0
+        total_protein = 0
+        total_carbs = 0
+        total_fats = 0
+        
+        for ing in recipe.ingredients:
+            if ing.quantity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ingredient '{ing.name}' must have a positive quantity"
+                )
+
+            db_ingredient = Ingredient(
+                name=ing.name,
+                quantity=ing.quantity,
+                unit=ing.unit,
+                nutritional_values={
+                    "calories": ing.nutritional_values.calories,
+                    "protein": ing.nutritional_values.protein,
+                    "carbs": ing.nutritional_values.carbs,
+                    "fats": ing.nutritional_values.fats
+                },
+                recipe=db_recipe
+            )
+            
+            serving_factor = ing.quantity / 100
+            total_calories += ing.nutritional_values.calories * serving_factor
+            total_protein += ing.nutritional_values.protein * serving_factor
+            total_carbs += ing.nutritional_values.carbs * serving_factor
+            total_fats += ing.nutritional_values.fats * serving_factor
+            
+            db.add(db_ingredient)
+        
+        # Update nutritional info
+        if db_recipe.nutritional_info:
+            db_recipe.nutritional_info.calories = total_calories
+            db_recipe.nutritional_info.protein = total_protein
+            db_recipe.nutritional_info.carbs = total_carbs
+            db_recipe.nutritional_info.fats = total_fats
+        else:
+            nutritional_info = NutritionalInfo(
+                calories=total_calories,
+                protein=total_protein,
+                carbs=total_carbs,
+                fats=total_fats,
+                serving_size=1,
+                recipe=db_recipe
+            )
+            db.add(nutritional_info)
+        
+        # Add new timers
+        for timer in recipe.timers:
+            if timer.duration <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Timer duration must be positive"
+                )
+                
+            db_timer = CookingTimer(
+                step_number=timer.step_number,
+                duration=timer.duration,
+                label=timer.label,
+                recipe=db_recipe
+            )
+            db.add(db_timer)
+        
+        db.commit()
+        return {"message": "Recipe updated successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
