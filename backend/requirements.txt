@@ -9,3 +9,7 @@ psycopg2-binary
 redis
 python-multipart
 email-validator
+pydantic_ai
+openai
+python-dotenv
+googletrans

@@ -9,6 +9,7 @@ from models.recipe_model import (
     ShoppingList, CookingTimer
 )
 from pydantic import BaseModel, EmailStr,validator
+from services.ai_service import setup_ai_routes
 
 app = FastAPI()
 
@@ -442,6 +443,9 @@ async def update_recipe(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+setup_ai_routes(app)
+
 
 if __name__ == "__main__":
     import uvicorn
