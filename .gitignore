@@ -1,9 +1,16 @@
-# Ignore VSCode settings
-.vscode/
-
-# Ignore Python cache
+# קבצים של Python שלא צריך ב-Git
 __pycache__/
+*.pyc
+*.pyo
 
+# קבצי סביבה עם מידע רגיש
 .env
 
-.pytest_cache
+# מסד נתונים זמני (SQLite)
+test.db
+
+# קבצים של Pytest שלא צריך
+.pytest_cache/
+
+# קבצי מערכת של VSCode
+.vscode/

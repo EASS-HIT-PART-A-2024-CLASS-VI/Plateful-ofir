@@ -30,30 +30,52 @@ Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, main
 ## **Project Structure** 📂
 
 ```plaintext
-├── backend
-|    ├── __init__.py          # App package initialization
-|    ├── crud.py              # CRUD operations for recipes, users, and ingredients
-|    ├── unit_tests.py        # Unit tests for application logic
-|    ├── Dockerfile           # Dockerfile to containerize the application
-|    ├── docker-compose.yml   # Docker Compose file for database and application setup
-|    ├── integration_test.py  # Integration tests to test the entire application
-|    ├── requirements.txt     # Project dependencies
-|    ├── main.py              # FastAPI application entry point
-├── db
-|    ├── __init__.py          # App package initialization
-|    ├── database.py          # Database connection and session management
-├── models
-|    ├── __init__.py          # App package initialization
-|    ├── recipe_model.py      # Pydantic and/or SQLAlchemy models for recipes.
-|    ├── base.py
-|    ├── user_model.py        # Pydantic and/or SQLAlchemy models for users.
-├── services
-|    ├── __init__.py          # App package initialization
-|    ├── image_service.py     # Logic for handling image-related functionality.
-|    ├── recipe_service.py    # Business logic for managing recipes.
-|    ├── timer_service.py     # Logic for managing cooking timers.
-|    ├── user_service.py      # Logic for user-specific operations.
-├── README.md                 # Project documentation
+│   .gitignore                     # Specifies which files and folders to exclude from Git tracking
+│   README.md                      # Project documentation and instructions
+  
+├── .vscode/                       # Visual Studio Code configuration folder 
+│   ├── settings.json              # Custom settings for VS Code 
+  
+├── backend/                       # Backend application (FastAPI)
+│   ├── .env                       # Environment variables 
+│   ├── crud.py                    # CRUD operations
+│   ├── docker-compose.yml         # Docker Compose configuration for running services
+│   ├── Dockerfile                 # Dockerfile for containerizing the backend
+│   ├── main.py                    # Main FastAPI application entry point
+│   ├── pytest.ini                 # Pytest configuration file
+│   ├── requirements.txt           # Python dependencies for the backend
+│   ├── __init__.py                # Marks this directory as a Python package
+│   │     
+│   ├── db/                        # Database management module
+│   │   ├── database.py            # Database connection and session handling
+│   │   ├── __init__.py            # Marks this directory as a Python package
+│   │     
+│   ├── models/                    # Data models for the application
+│   │   ├── base.py                # SQLAlchemy base class for models
+│   │   ├── recipe_model.py        # Recipe-related database models
+│   │   ├── user_model.py          # User-related database models
+│   │   ├── __init__.py            # Marks this directory as a Python package
+│   │     
+│   ├── services/                  # Business logic and service layer
+│   │   ├── ai_service.py          # AI-related functions 
+│   │   ├── image_service.py       # Handles image uploads and retrieval
+│   │   ├── recipe_service.py      # Logic for managing recipes
+│   │   ├── timer_service.py       # Cooking timer management
+│   │   ├── user_service.py        # Handles user management and preferences
+│   │   ├── __init__.py            # Marks this directory as a Python package
+│   │ 
+│   ├── tests/                     # Automated tests for the backend
+│   │   ├── conftest.py            # Pytest fixture configurations
+│   │   ├── test_ai_service.py     # Tests for AI-related functionalities
+│   │   ├── test_database.py       # Tests for database operations
+│   │   ├── test_image_service.py  # Tests for image upload service
+│   │   ├── test_integration.py    # End-to-end tests covering multiple services
+│   │   ├── test_models.py         # Tests for database models
+│   │   ├── test_services.py       # Unit tests for service layer
+│   │
+└── frontend/                      # Frontend application 
+    ├── Recipe App Frontend        # Placeholder for the frontend code 
+
 ```
 
 ---
