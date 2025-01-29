@@ -12,15 +12,15 @@ class Recipe(Base):
     __tablename__ = 'recipes'
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    image = Column(String)
-    preparation_steps = Column(Text)
-    cooking_time = Column(Integer)
-    servings = Column(Integer, default=1)
-    categories = Column(String)  # Comma-separated: breakfast,dinner,etc
-    tags = Column(String)        # Comma-separated: vegan,gluten-free,etc
-    rating = Column(Float, default=0.0)
-    creator_id = Column(Integer, ForeignKey('users.id'))
+    name = Column(String, index=True, nullable=False)
+    preparation_steps = Column(String, nullable=False)
+    cooking_time = Column(Integer, nullable=False)
+    servings = Column(Integer, nullable=False)
+    categories = Column(String, nullable=False)
+    tags = Column(String, nullable=False)
+    rating = Column(Float, nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
     
     ingredients = relationship("Ingredient", back_populates="recipe", cascade="all, delete-orphan")
     nutritional_info = relationship("NutritionalInfo", back_populates="recipe", uselist=False, cascade="all, delete-orphan")
@@ -53,16 +53,6 @@ class NutritionalInfo(Base):
     
     recipe = relationship("Recipe", back_populates="nutritional_info")
 
-class User(Base):
-    __tablename__ = 'users'
-
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True)
-    dietary_preferences = Column(JSON)  # Stores preferences like vegan, gluten-free
-    
-    recipes = relationship("Recipe", back_populates="creator")
-    shopping_lists = relationship("ShoppingList", back_populates="user")
 
 class ShoppingList(Base):
     __tablename__ = 'shopping_lists'

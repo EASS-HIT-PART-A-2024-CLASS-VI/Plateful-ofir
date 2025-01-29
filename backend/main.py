@@ -3,22 +3,29 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from datetime import datetime
 import json
-from db.database import get_db, init_db
 from models.recipe_model import (
-    Recipe, Ingredient, NutritionalInfo, User, 
+    Recipe, Ingredient, NutritionalInfo, 
     ShoppingList, CookingTimer
 )
-from pydantic import BaseModel, EmailStr,validator
+from models.user_model import User
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from services.ai_service import setup_ai_routes
+from db.database import engine, get_db, init_db
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize DB on startup
+    init_db()
+    yield
+    # Clean up resources on shutdown if needed
+    pass
+
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Plateful API"}
-
-# Initialize database
-init_db()
 
 # Pydantic models
 class NutritionalValues(BaseModel):
@@ -27,11 +34,29 @@ class NutritionalValues(BaseModel):
     carbs: int
     fats: int
 
+    @field_validator('calories', 'protein', 'carbs', 'fats', mode='before')
+    def validate_nutritional_values(cls, v):
+        if v < 0:
+            raise ValueError('Nutritional values must be non-negative')
+        return v
+
 class IngredientCreate(BaseModel):
     name: str
     quantity: float
     unit: str
     nutritional_values: NutritionalValues
+
+    @field_validator('quantity', mode='before')
+    def validate_quantity(cls, v):
+        if v <= 0:
+            raise ValueError('Quantity must be positive')
+        return v
+
+    @field_validator('name', mode='before')
+    def validate_name(cls, v):
+        if not v:
+            raise ValueError('Name must not be empty')
+        return v
 
 class TimerCreate(BaseModel):
     step_number: int
@@ -53,36 +78,25 @@ class UserCreate(BaseModel):
     email: EmailStr
     dietary_preferences: List[str]
 
-# עדכון המודלים של Pydantic עם ולידציה
-class NutritionalValues(BaseModel):
-    calories: int
-    protein: int
-    carbs: int
-    fats: int
+class SuggestRecipeRequest(BaseModel):
+    ingredients: List[IngredientCreate]
 
-    @validator('calories', 'protein', 'carbs', 'fats')
-    def validate_positive(cls, v):
-        if v < 0:
-            raise ValueError("Must be a positive number")
-        return v
+@app.post("/suggest_recipe")
+async def suggest_recipe(request: SuggestRecipeRequest):
+    if not request.ingredients:
+        raise HTTPException(status_code=400, detail="Ingredients list cannot be empty")
+    # Your logic to suggest a recipe
+    return {"message": "Recipe suggestion"}
 
-class IngredientCreate(BaseModel):
-    name: str
-    quantity: float
-    unit: str
-    nutritional_values: NutritionalValues
+class CookingQuestionRequest(BaseModel):
+    question: str
 
-    @validator('quantity')
-    def validate_quantity(cls, v):
-        if v <= 0:
-            raise ValueError("Quantity must be positive")
-        return v
-
-    @validator('name')
-    def validate_name(cls, v):
-        if not v.strip():
-            raise ValueError("Name cannot be empty")
-        return v.strip()
+@app.post("/general_cooking_questions")
+async def general_cooking_questions(request: CookingQuestionRequest):
+    if not request.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+    # Your logic to handle cooking questions
+    return {"message": "Cooking question response"}
 
 # Recipe endpoints
 @app.post("/recipes/")
@@ -226,6 +240,55 @@ async def get_recipes(
     
     return query.all()
 
+@app.get("/recipes/{recipe_id}")
+async def get_recipe(
+    recipe_id: int,
+    db: Session = Depends(get_db)
+):
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+        
+    # Convert recipe to dictionary with all relationships
+    recipe_dict = {
+        "id": recipe.id,
+        "name": recipe.name,
+        "preparation_steps": recipe.preparation_steps,
+        "cooking_time": recipe.cooking_time,
+        "servings": recipe.servings,
+        "categories": recipe.categories,
+        "tags": recipe.tags,
+        "rating": recipe.rating,
+        "creator_id": recipe.creator_id,
+        "ingredients": [
+            {
+                "id": ing.id,
+                "name": ing.name,
+                "quantity": ing.quantity,
+                "unit": ing.unit,
+                "nutritional_values": ing.nutritional_values
+            }
+            for ing in recipe.ingredients
+        ],
+        "nutritional_info": {
+            "calories": recipe.nutritional_info.calories,
+            "protein": recipe.nutritional_info.protein,
+            "carbs": recipe.nutritional_info.carbs,
+            "fats": recipe.nutritional_info.fats,
+            "serving_size": recipe.nutritional_info.serving_size
+        } if recipe.nutritional_info else None,
+        "timers": [
+            {
+                "step_number": timer.step_number,
+                "duration": timer.duration,
+                "label": timer.label
+            }
+            for timer in recipe.cooking_timers
+        ]
+    }
+    
+    return recipe_dict
+
 @app.get("/recipes/{recipe_id}/scale")
 async def scale_recipe(
     recipe_id: int,
@@ -277,37 +340,24 @@ async def share_recipe(
     db.commit()
     return {"message": "Recipe shared successfully"}
 
-@app.post("/shopping-list/")
-async def create_shopping_list(
+@app.get("/shopping-list/{recipe_id}")
+async def get_shopping_list(
     recipe_id: int,
     servings: int = 1,
-    current_user_id: int = 1,  # TODO: Replace with actual auth
     db: Session = Depends(get_db)
-):
+    ):
+
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
     
     scale_factor = servings / recipe.servings
-    items = []
+    items = [
+        {"name": ing.name, "quantity": round(ing.quantity * scale_factor, 2), "unit": ing.unit}
+        for ing in recipe.ingredients
+    ]
     
-    for ing in recipe.ingredients:
-        items.append({
-            "name": ing.name,
-            "quantity": round(ing.quantity * scale_factor, 2),
-            "unit": ing.unit
-        })
-    
-    shopping_list = ShoppingList(
-        user_id=current_user_id,
-        recipe_id=recipe_id,
-        items=items,
-        created_at=datetime.now().isoformat()
-    )
-    
-    db.add(shopping_list)
-    db.commit()
-    return {"message": "Shopping list created", "list_id": shopping_list.id}
+    return {"recipe_name": recipe.name, "shopping_list": items}
 
 @app.post("/recipes/{recipe_id}/timer")
 async def start_timer(recipe_id: int, step_number: int, db: Session = Depends(get_db)):
