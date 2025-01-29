@@ -81,23 +81,6 @@ class UserCreate(BaseModel):
 class SuggestRecipeRequest(BaseModel):
     ingredients: List[IngredientCreate]
 
-@app.post("/suggest_recipe")
-async def suggest_recipe(request: SuggestRecipeRequest):
-    if not request.ingredients:
-        raise HTTPException(status_code=400, detail="Ingredients list cannot be empty")
-    # Your logic to suggest a recipe
-    return {"message": "Recipe suggestion"}
-
-class CookingQuestionRequest(BaseModel):
-    question: str
-
-@app.post("/general_cooking_questions")
-async def general_cooking_questions(request: CookingQuestionRequest):
-    if not request.question.strip():
-        raise HTTPException(status_code=400, detail="Question cannot be empty")
-    # Your logic to handle cooking questions
-    return {"message": "Cooking question response"}
-
 # Recipe endpoints
 @app.post("/recipes/")
 async def create_recipe(
