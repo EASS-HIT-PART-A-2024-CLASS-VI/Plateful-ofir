@@ -12,14 +12,15 @@ class Recipe(Base):
     __tablename__ = 'recipes'
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, nullable=False)
-    preparation_steps = Column(String, nullable=False)
-    cooking_time = Column(Integer, nullable=False)
-    servings = Column(Integer, nullable=False)
-    categories = Column(String, nullable=False)
-    tags = Column(String, nullable=False)
-    rating = Column(Float, nullable=False)
-    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String, index=True)
+    preparation_steps = Column(String)
+    cooking_time = Column(Integer)
+    servings = Column(Integer, default=1)
+    categories = Column(String)
+    tags = Column(String, nullable=True)
+    rating = Column(Float, default=0.0)  
+    rating_count = Column(Integer, default=0)  
+    creator_id = Column(Integer, ForeignKey('users.id'))
 
     
     ingredients = relationship("Ingredient", back_populates="recipe", cascade="all, delete-orphan")

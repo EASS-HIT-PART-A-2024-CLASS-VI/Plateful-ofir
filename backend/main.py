@@ -12,6 +12,8 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from services.ai_service import setup_ai_routes
 from db.database import engine, get_db, init_db
 from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -80,6 +82,17 @@ class UserCreate(BaseModel):
 
 class SuggestRecipeRequest(BaseModel):
     ingredients: List[IngredientCreate]
+
+class RatingRequest(BaseModel):
+    rating: float
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # זה ה-Frontend שלך
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Recipe endpoints
 @app.post("/recipes/")
@@ -359,19 +372,25 @@ async def start_timer(recipe_id: int, step_number: int, db: Session = Depends(ge
 @app.post("/recipes/{recipe_id}/rate")
 async def rate_recipe(
     recipe_id: int,
-    rating: float,
+    rating_data: RatingRequest,  # 👈 מקבלים את הבקשה כאובייקט Pydantic
     db: Session = Depends(get_db)
 ):
+    rating = rating_data.rating  # 👈 שולפים את הדירוג מתוך הבקשה
+
     if not 0 <= rating <= 5:
         raise HTTPException(status_code=400, detail="Rating must be between 0 and 5")
-    
+
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    
-    recipe.rating = rating
+
+    # חישוב ממוצע הדירוגים
+    total_rating = recipe.rating * recipe.rating_count
+    recipe.rating_count += 1
+    recipe.rating = (total_rating + rating) / recipe.rating_count
+
     db.commit()
-    return {"message": "Rating updated successfully"}
+    return {"message": "Rating updated successfully", "new_rating": recipe.rating, "total_ratings": recipe.rating_count}
 
 
 @app.put("/recipes/{recipe_id}")
