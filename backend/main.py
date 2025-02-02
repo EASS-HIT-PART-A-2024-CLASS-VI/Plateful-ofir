@@ -4,7 +4,7 @@ from typing import List, Optional, Dict
 from datetime import datetime
 import json
 from models.recipe_model import (
-    Recipe, Ingredient, NutritionalInfo, 
+    Comment, Recipe, Ingredient, NutritionalInfo, SharedRecipe, 
     ShoppingList, CookingTimer
 )
 from models.user_model import User
@@ -13,6 +13,7 @@ from services.ai_service import setup_ai_routes
 from db.database import engine, get_db, init_db
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+from models.recipe_model import Comment
 
 
 @asynccontextmanager
@@ -85,6 +86,10 @@ class SuggestRecipeRequest(BaseModel):
 
 class RatingRequest(BaseModel):
     rating: float
+
+class CommentRequest(BaseModel):
+    user_id: int
+    content: str
 
 app.add_middleware(
     CORSMiddleware,
@@ -285,6 +290,28 @@ async def get_recipe(
     
     return recipe_dict
 
+@app.get("/users/{user_id}/recipes")
+async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
+    recipes = db.query(Recipe).filter(Recipe.creator_id == user_id).all()
+    
+    return [
+        {
+            "id": recipe.id,
+            "name": recipe.name,
+            "categories": recipe.categories,
+            "rating": recipe.rating
+        }
+        for recipe in recipes
+    ]
+
+@app.get("/users/{user_id}/notifications")
+async def get_user_notifications(user_id: int, db: Session = Depends(get_db)):
+    notifications = [
+        {"message": "User 3 shared a recipe with you!", "link": "/recipes/5"},
+        {"message": "New comment on your recipe!", "link": "/recipes/2"},
+    ]
+    return notifications
+
 @app.get("/recipes/{recipe_id}/scale")
 async def scale_recipe(
     recipe_id: int,
@@ -323,18 +350,33 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
 async def share_recipe(
     recipe_id: int,
     user_id: int,
-    current_user_id: int = 1,  # TODO: Replace with actual auth
     db: Session = Depends(get_db)
-):
+    ):
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     user = db.query(User).filter(User.id == user_id).first()
     
     if not recipe or not user:
         raise HTTPException(status_code=404, detail="Recipe or user not found")
-    
-    recipe.shared_with.append(user)
+
+    shared_recipe = SharedRecipe(recipe_id=recipe_id, user_id=user_id)
+    db.add(shared_recipe)
     db.commit()
-    return {"message": "Recipe shared successfully"}
+    
+    return {"message": f"Recipe '{recipe.name}' shared successfully with user {user_id}"}
+
+@app.get("/users/{user_id}/shared-recipes")
+async def get_shared_recipes(user_id: int, db: Session = Depends(get_db)):
+    shared_recipes = db.query(SharedRecipe).filter(SharedRecipe.user_id == user_id).all()
+    
+    return [
+        {
+            "id": shared.recipe.id,
+            "name": shared.recipe.name,
+            "categories": shared.recipe.categories,
+            "rating": shared.recipe.rating
+        }
+        for shared in shared_recipes
+    ]
 
 @app.get("/shopping-list/{recipe_id}")
 async def get_shopping_list(
@@ -498,6 +540,39 @@ async def update_recipe(
 
 setup_ai_routes(app)
 
+@app.post("/recipes/{recipe_id}/comment")
+async def add_comment(
+    recipe_id: int,
+    comment_data: CommentRequest,
+    db: Session = Depends(get_db)
+):
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    comment = Comment(
+        recipe_id=recipe_id,
+        user_id=comment_data.user_id,
+        content=comment_data.content,
+        timestamp=datetime.utcnow().isoformat()
+    )
+
+    db.add(comment)
+    db.commit()
+    return {"message": "Comment added successfully", "comment": comment.content}
+
+@app.get("/recipes/{recipe_id}/comments")
+async def get_comments(recipe_id: int, db: Session = Depends(get_db)):
+    comments = db.query(Comment).filter(Comment.recipe_id == recipe_id).all()
+    return [
+        {
+            "id": comment.id,
+            "user_id": comment.user_id,
+            "content": comment.content,
+            "timestamp": comment.timestamp
+        }
+        for comment in comments
+    ]
 
 if __name__ == "__main__":
     import uvicorn

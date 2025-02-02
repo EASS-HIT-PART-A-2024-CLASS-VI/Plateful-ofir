@@ -22,11 +22,11 @@ class Recipe(Base):
     rating_count = Column(Integer, default=0)  
     creator_id = Column(Integer, ForeignKey('users.id'))
 
-    
+    comments = relationship("Comment", back_populates="recipe", cascade="all, delete-orphan")
     ingredients = relationship("Ingredient", back_populates="recipe", cascade="all, delete-orphan")
     nutritional_info = relationship("NutritionalInfo", back_populates="recipe", uselist=False, cascade="all, delete-orphan")
     creator = relationship("User", back_populates="recipes")
-    shared_with = relationship("User", secondary=recipe_shares, backref="shared_recipes")
+    shared_with = relationship("SharedRecipe", back_populates="recipe", cascade="all, delete-orphan")
     cooking_timers = relationship("CookingTimer", back_populates="recipe", cascade="all, delete-orphan")
 
 class Ingredient(Base):
@@ -77,3 +77,25 @@ class CookingTimer(Base):
     label = Column(String)
     
     recipe = relationship("Recipe", back_populates="cooking_timers")
+
+class Comment(Base):
+    __tablename__ = 'comments'
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey('recipes.id'))
+    user_id = Column(Integer, ForeignKey('users.id'))
+    content = Column(Text, nullable=False)
+    timestamp = Column(String)
+
+    recipe = relationship("Recipe", back_populates="comments")
+    user = relationship("User")
+
+class SharedRecipe(Base):
+    __tablename__ = 'shared_recipes'
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey('recipes.id'))
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    recipe = relationship("Recipe", back_populates="shared_with")
+    user = relationship("User")
