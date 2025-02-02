@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Union
 from datetime import datetime
 import json
+import shutil
 import os
 from passlib.context import CryptContext
 from models.recipe_model import (
@@ -16,6 +17,7 @@ from db.database import engine, get_db, init_db
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from models.recipe_model import Comment
+from fastapi.staticfiles import StaticFiles
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 
 @asynccontextmanager
@@ -30,11 +32,13 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # זה ה-Frontend שלך
+    allow_origins=["*"],  # זה ה-Frontend שלך
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Pydantic models
 class NutritionalValues(BaseModel):
@@ -112,55 +116,71 @@ class CommentRequest(BaseModel):
     content: str
 
 # Recipe endpoints
+STATIC_DIR = "static"
+os.makedirs(STATIC_DIR, exist_ok=True)  # ודא שהתיקייה קיימת
+
 @app.post("/recipes/")
 async def create_recipe(
-    name: Optional[str] = Form(None),
-    preparation_steps: Optional[str] = Form(None),
-    cooking_time: Optional[int] = Form(None),
-    servings: Optional[int] = Form(None),
-    categories: Optional[str] = Form(None),
-    tags: Optional[str] = Form(None),
+    name: str = Form(...),
+    preparation_steps: str = Form(...),
+    cooking_time: int = Form(...),
+    servings: int = Form(...),
+    categories: str = Form(...),
+    tags: str = Form(...),
+    creator_id: str = Form(...),
     image: Optional[UploadFile] = File(None),
-    creator_id:  Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     try:
-        if not os.path.exists("static"):
-            os.makedirs("static")  # 👈 יצירת תיקייה אם היא לא קיימת
+        creator_id = int(creator_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid creator_id")
 
-        image_url = None
-        if image:
-            image_path = f"static/{image.filename}"
+    # Handle image upload if provided
+    image_url = None
+    if image:
+        try:
+            # Create unique filename using timestamp
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            image_filename = f"{timestamp}_{image.filename}"
+            image_path = os.path.join(STATIC_DIR, image_filename)
+            
+            # Save image to static directory
             with open(image_path, "wb") as buffer:
-                buffer.write(await image.read())
-            image_url = f"/{image_path}"
+                shutil.copyfileobj(image.file, buffer)
+            
+            # Set relative URL for database
+            image_url = f"/static/{image_filename}"
+            print(f"✅ Image saved successfully at: {image_url}")
+        except Exception as e:
+            print(f"🚨 Error saving image: {e}")
+            raise HTTPException(status_code=500, detail=f"Error saving image: {str(e)}")
 
-        new_recipe = Recipe(
-            name=name,
-            preparation_steps=preparation_steps,
-            cooking_time=cooking_time,
-            servings=servings,
-            categories=categories,
-            tags=tags,
-            image_url=image_url, 
-            creator_id=creator_id 
-        )
+    # Create recipe with image URL
+    new_recipe = Recipe(
+        name=name,
+        preparation_steps=preparation_steps,
+        cooking_time=cooking_time,
+        servings=servings,
+        categories=categories,
+        tags=tags,
+        creator_id=creator_id,
+        image_url=image_url
+    )
 
+    try:
         db.add(new_recipe)
         db.commit()
         db.refresh(new_recipe)
-
         return {
-        "message": "Recipe created successfully",
-        "recipe_id": new_recipe.id,
-        "creator_id": new_recipe.creator_id
+            "message": "Recipe created successfully",
+            "recipe_id": new_recipe.id,
+            "image_url": image_url
         }
-
     except Exception as e:
         db.rollback()
-        print(f"❌ Error in create_recipe: {str(e)}")  
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        raise HTTPException(status_code=500, detail=f"Error creating recipe: {str(e)}")
+ 
 @app.get("/recipes/")
 async def get_recipes(
     category: Optional[str] = None,
@@ -177,8 +197,22 @@ async def get_recipes(
     
     if sort_by == "rating":
         query = query.order_by(Recipe.rating.desc())
-    
-    return query.all()
+
+    # ✅ ודאי שכל מתכון מחזיר גם את `image_url`
+    recipes = query.all()
+    return [
+        {
+            "id": r.id,
+            "name": r.name,
+            "cooking_time": r.cooking_time,
+            "categories": r.categories,
+            "rating": r.rating,
+            "creator_id": r.creator_id,
+            "image_url": r.image_url,  # ✅ החזרת הנתיב של התמונה
+        }
+        for r in recipes
+    ]
+
 
 @app.get("/recipes/{recipe_id}")
 async def get_recipe(
@@ -188,8 +222,10 @@ async def get_recipe(
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if recipe is None:
         raise HTTPException(status_code=404, detail="Recipe not found")
-        
-    # Convert recipe to dictionary with all relationships
+
+    print(f"📸 Checking image_url: {recipe.image_url}")  # ✅ בדיקה אם השדה קיים
+    
+    # ✅ ודאי שה-API מחזיר גם `image_url`
     recipe_dict = {
         "id": recipe.id,
         "name": recipe.name,
@@ -200,6 +236,7 @@ async def get_recipe(
         "tags": recipe.tags,
         "rating": recipe.rating,
         "creator_id": recipe.creator_id,
+        "image_url": recipe.image_url if recipe.image_url else None,  # ✅ החזרת הנתיב של התמונה
         "ingredients": [
             {
                 "id": ing.id,
@@ -229,28 +266,130 @@ async def get_recipe(
     
     return recipe_dict
 
-@app.get("/users/{user_id}/recipes")
-async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
+
+@app.put("/recipes/{recipe_id}")
+async def update_recipe(
+    recipe_id: int,
+    recipe: RecipeCreate,  # 👈 מצפה לכל הנתונים כולל `ingredients` ו-`timers`
+    current_user_id: int = Query(..., description="User ID updating the recipe"),
+    image: Optional[UploadFile] = File(None),  # ✅ תמיכה בעדכון תמונה
+    db: Session = Depends(get_db)
+):
+    # 🔎 בדיקת קיום המתכון
+    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not db_recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # 🔒 בדיקת הרשאות משתמש
+    if db_recipe.creator_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this recipe")
+
     try:
-        user_recipes = db.query(Recipe).filter(Recipe.creator_id == user_id).all()
+        # ✏️ עדכון פרטי המתכון
+        db_recipe.name = recipe.name
+        db_recipe.preparation_steps = recipe.preparation_steps
+        db_recipe.cooking_time = recipe.cooking_time
+        db_recipe.servings = recipe.servings
+        db_recipe.categories = recipe.categories
+        db_recipe.tags = recipe.tags
 
-        if not user_recipes:
-            return []
+        # 📌 שמירת תמונה חדשה (אם קיימת)
+        if image:
+            image_filename = f"{recipe_id}_{image.filename}"
+            image_path = os.path.join(STATIC_DIR, image_filename)
 
-        return user_recipes
+            # ✅ שמירת התמונה החדשה
+            with open(image_path, "wb") as buffer:
+                shutil.copyfileobj(image.file, buffer)
 
+            # ❌ מחיקת התמונה הישנה אם קיימת
+            if db_recipe.image_url:
+                old_image_path = db_recipe.image_url.replace("/static/", "static/")
+                if os.path.exists(old_image_path):
+                    os.remove(old_image_path)
+
+            # ✅ עדכון URL של התמונה
+            db_recipe.image_url = f"/static/{image_filename}"
+
+        # ❌ מחיקת מרכיבים וטיימרים ישנים
+        db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
+        db.query(CookingTimer).filter(CookingTimer.recipe_id == recipe_id).delete()
+
+        # 🔄 הוספת מרכיבים חדשים
+        total_calories = 0
+        total_protein = 0
+        total_carbs = 0
+        total_fats = 0
+
+        for ing in recipe.ingredients:
+            if ing.quantity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ingredient '{ing.name}' must have a positive quantity"
+                )
+
+            db_ingredient = Ingredient(
+                name=ing.name,
+                quantity=ing.quantity,
+                unit=ing.unit,
+                nutritional_values={
+                    "calories": ing.nutritional_values.calories,
+                    "protein": ing.nutritional_values.protein,
+                    "carbs": ing.nutritional_values.carbs,
+                    "fats": ing.nutritional_values.fats
+                },
+                recipe=db_recipe
+            )
+
+            # 🔢 חישוב ערכים תזונתיים
+            serving_factor = ing.quantity / 100
+            total_calories += ing.nutritional_values.calories * serving_factor
+            total_protein += ing.nutritional_values.protein * serving_factor
+            total_carbs += ing.nutritional_values.carbs * serving_factor
+            total_fats += ing.nutritional_values.fats * serving_factor
+
+            db.add(db_ingredient)
+
+        # 🔄 עדכון מידע תזונתי
+        if db_recipe.nutritional_info:
+            db_recipe.nutritional_info.calories = total_calories
+            db_recipe.nutritional_info.protein = total_protein
+            db_recipe.nutritional_info.carbs = total_carbs
+            db_recipe.nutritional_info.fats = total_fats
+        else:
+            nutritional_info = NutritionalInfo(
+                calories=total_calories,
+                protein=total_protein,
+                carbs=total_carbs,
+                fats=total_fats,
+                serving_size=1,
+                recipe=db_recipe
+            )
+            db.add(nutritional_info)
+
+        # 🔄 הוספת טיימרים חדשים
+        for timer in recipe.timers:
+            if timer.duration <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Timer duration must be positive"
+                )
+
+            db_timer = CookingTimer(
+                step_number=timer.step_number,
+                duration=timer.duration,
+                label=timer.label,
+                recipe=db_recipe
+            )
+            db.add(db_timer)
+
+        db.commit()
+        return {"message": "Recipe updated successfully", "image_url": db_recipe.image_url}
+        
     except Exception as e:
-        print(f"❌ Error fetching user recipes: {str(e)}")
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/users/{user_id}/notifications")
-async def get_user_notifications(user_id: int, db: Session = Depends(get_db)):
-    notifications = [
-        {"message": "User 3 shared a recipe with you!", "link": "/recipes/5"},
-        {"message": "New comment on your recipe!", "link": "/recipes/2"},
-    ]
-    return notifications
+    
 
 @app.get("/recipes/{recipe_id}/scale")
 async def scale_recipe(
@@ -274,51 +413,6 @@ async def scale_recipe(
     
     return {"scaled_ingredients": scaled_ingredients}
 
-# User endpoints
-@app.post("/register/", include_in_schema=True)
-async def register_user(user: UserRegister, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    hashed_password = pwd_context.hash(user.password) 
-
-    new_user = User(
-        username=user.username,
-        email=user.email,
-        password_hash=hashed_password  
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    return {"message": "User registered successfully"}
-
-
-@app.post("/login/")
-async def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    if not pwd_context.verify(user.password, db_user.password_hash):  
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    return {"message": "Login successful", "user_id": db_user.id}
-
-@app.get("/users/{user_id}")
-async def get_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "dietary_preferences": user.dietary_preferences
-    }
-
 @app.post("/recipes/{recipe_id}/share/{user_id}")
 async def share_recipe(
     recipe_id: int,
@@ -336,20 +430,6 @@ async def share_recipe(
     db.commit()
     
     return {"message": f"Recipe '{recipe.name}' shared successfully with user {user_id}"}
-
-@app.get("/users/{user_id}/shared-recipes")
-async def get_shared_recipes(user_id: int, db: Session = Depends(get_db)):
-    shared_recipes = db.query(SharedRecipe).filter(SharedRecipe.user_id == user_id).all()
-    
-    return [
-        {
-            "id": shared.recipe.id,
-            "name": shared.recipe.name,
-            "categories": shared.recipe.categories,
-            "rating": shared.recipe.rating
-        }
-        for shared in shared_recipes
-    ]
 
 @app.get("/shopping-list/{recipe_id}")
 async def get_shopping_list(
@@ -406,111 +486,7 @@ async def rate_recipe(
 
     db.commit()
     return {"message": "Rating updated successfully", "new_rating": recipe.rating, "total_ratings": recipe.rating_count}
-
-
-@app.put("/recipes/{recipe_id}")
-async def update_recipe(
-    recipe_id: int,
-    recipe: RecipeCreate,  # 👈 מצפה לכל הנתונים כולל `ingredients` ו-`timers`
-    current_user_id: int = Query(..., description="User ID updating the recipe"),
-    db: Session = Depends(get_db)
-):
-    # בדיקת קיום המתכון
-    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-    if not db_recipe:
-        raise HTTPException(status_code=404, detail="Recipe not found")
     
-    # בדיקת הרשאות משתמש
-    if db_recipe.creator_id != current_user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this recipe")
-    
-    try:
-        # עדכון הנתונים הבסיסיים
-        db_recipe.name = recipe.name
-        db_recipe.preparation_steps = recipe.preparation_steps
-        db_recipe.cooking_time = recipe.cooking_time
-        db_recipe.servings = recipe.servings
-        db_recipe.categories = recipe.categories
-        db_recipe.tags = recipe.tags
-        
-        # מחיקת המרכיבים והטיימרים הקודמים
-        db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
-        db.query(CookingTimer).filter(CookingTimer.recipe_id == recipe_id).delete()
-        
-        # הוספת מרכיבים חדשים
-        total_calories = 0
-        total_protein = 0
-        total_carbs = 0
-        total_fats = 0
-        
-        for ing in recipe.ingredients:
-            if ing.quantity <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Ingredient '{ing.name}' must have a positive quantity"
-                )
-
-            db_ingredient = Ingredient(
-                name=ing.name,
-                quantity=ing.quantity,
-                unit=ing.unit,
-                nutritional_values={
-                    "calories": ing.nutritional_values.calories,
-                    "protein": ing.nutritional_values.protein,
-                    "carbs": ing.nutritional_values.carbs,
-                    "fats": ing.nutritional_values.fats
-                },
-                recipe=db_recipe
-            )
-            
-            serving_factor = ing.quantity / 100
-            total_calories += ing.nutritional_values.calories * serving_factor
-            total_protein += ing.nutritional_values.protein * serving_factor
-            total_carbs += ing.nutritional_values.carbs * serving_factor
-            total_fats += ing.nutritional_values.fats * serving_factor
-            
-            db.add(db_ingredient)
-        
-        # עדכון המידע התזונתי
-        if db_recipe.nutritional_info:
-            db_recipe.nutritional_info.calories = total_calories
-            db_recipe.nutritional_info.protein = total_protein
-            db_recipe.nutritional_info.carbs = total_carbs
-            db_recipe.nutritional_info.fats = total_fats
-        else:
-            nutritional_info = NutritionalInfo(
-                calories=total_calories,
-                protein=total_protein,
-                carbs=total_carbs,
-                fats=total_fats,
-                serving_size=1,
-                recipe=db_recipe
-            )
-            db.add(nutritional_info)
-        
-        # הוספת טיימרים חדשים
-        for timer in recipe.timers:
-            if timer.duration <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Timer duration must be positive"
-                )
-                
-            db_timer = CookingTimer(
-                step_number=timer.step_number,
-                duration=timer.duration,
-                label=timer.label,
-                recipe=db_recipe
-            )
-            db.add(db_timer)
-        
-        db.commit()
-        return {"message": "Recipe updated successfully"}
-        
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
 setup_ai_routes(app)
 
 @app.post("/recipes/{recipe_id}/comment")
@@ -545,6 +521,100 @@ async def get_comments(recipe_id: int, db: Session = Depends(get_db)):
             "timestamp": comment.timestamp
         }
         for comment in comments
+    ]
+
+# User endpoints
+@app.post("/register/", include_in_schema=True)
+async def register_user(user: UserRegister, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_password = pwd_context.hash(user.password) 
+
+    new_user = User(
+        username=user.username,
+        email=user.email,
+        password_hash=hashed_password  
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return {"message": "User registered successfully"}
+
+
+@app.post("/login/")
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not pwd_context.verify(user.password, db_user.password_hash):  
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    return {"message": "Login successful", "user_id": db_user.id}
+
+@app.get("/users/")
+async def get_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    if not users:
+        raise HTTPException(status_code=404, detail="No users found")
+    
+    return [
+        {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email
+        }
+        for user in users
+    ]
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "dietary_preferences": user.dietary_preferences
+    }
+
+@app.get("/users/{user_id}/recipes")
+async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
+    try:
+        user_recipes = db.query(Recipe).filter(Recipe.creator_id == user_id).all()
+        if not user_recipes:
+            return []
+        return user_recipes
+    except Exception as e:
+        print(f"Error fetching user recipes: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/users/{user_id}/notifications")
+async def get_user_notifications(user_id: int, db: Session = Depends(get_db)):
+    notifications = [
+        {"message": "User 3 shared a recipe with you!", "link": "/recipes/5"},
+        {"message": "New comment on your recipe!", "link": "/recipes/2"},
+    ]
+    return notifications
+
+@app.get("/users/{user_id}/shared-recipes")
+async def get_shared_recipes(user_id: int, db: Session = Depends(get_db)):
+    shared_recipes = db.query(SharedRecipe).filter(SharedRecipe.user_id == user_id).all()
+    
+    return [
+        {
+            "id": shared.recipe.id,
+            "name": shared.recipe.name,
+            "categories": shared.recipe.categories,
+            "rating": shared.recipe.rating
+        }
+        for shared in shared_recipes
     ]
 
 if __name__ == "__main__":

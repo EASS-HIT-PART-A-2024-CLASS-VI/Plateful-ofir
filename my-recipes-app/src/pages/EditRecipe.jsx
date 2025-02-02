@@ -32,45 +32,48 @@ export default function EditRecipe() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
   
+    const userId = localStorage.getItem("user_id");  // ✅ שליפת המשתמש המחובר
+    console.log("📡 Sending user_id:", userId); // 🔍 בדיקה
+  
+    if (!userId) {
+      toast.error("❌ You must be logged in to edit a recipe.");
+      return;
+    }
+  
     const formattedRecipe = {
-      name: recipe.name.trim() || "Untitled",
-      preparation_steps: recipe.preparation_steps.trim() || "No steps provided",
+      name: recipe.name.trim(),
+      preparation_steps: recipe.preparation_steps.trim(),
       cooking_time: parseInt(recipe.cooking_time) || 0,
       servings: parseInt(recipe.servings) || 1,
-      categories: recipe.categories.trim() || "Uncategorized",
-      tags: recipe.tags.trim() || "",
-      ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
-      timers: Array.isArray(recipe.timers) ? recipe.timers : []
+      categories: recipe.categories.trim(),
+      tags: recipe.tags.trim(),
     };
   
-    console.log("📡 Sending formatted data:", JSON.stringify(formattedRecipe));
+    console.log("📡 Sending formatted data:", formattedRecipe);
   
-    fetch(`http://localhost:8000/recipes/${id}?current_user_id=1`, { // 👈 שליחת ה-user ID
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formattedRecipe),
-    })
-      .then(async (response) => {
-        const body = await response.json();
-        console.log("🔴 Server response:", body);
-        if (!response.ok) {
-          console.error("❌ Error response from server:", body);
-          throw new Error("Failed to update recipe");
-        }
-        return body;
-      })
-      .then(() => {
-        toast.success("Recipe updated successfully!");
-        navigate(`/recipes/${id}`);
-      })
-      .catch((error) => {
-        console.error("❌ Error updating recipe:", error);
-        toast.error("❌ Failed to update recipe. Please try again.");
+    try {
+      const response = await fetch(`http://localhost:8000/recipes/${recipe.id}?current_user_id=${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formattedRecipe),
       });
-  };  
+  
+      const data = await response.json();
+      console.log("🔴 Server response:", data);
+  
+      if (!response.ok) throw new Error(data.detail || "Failed to update recipe");
+  
+      toast.success("Recipe updated successfully!");
+      navigate(`/recipes/${recipe.id}`);
+    } catch (error) {
+      console.error("❌ Error updating recipe:", error);
+      toast.error("❌ Failed to update recipe. Please try again.");
+    }
+  };
+  
   
 
   return (

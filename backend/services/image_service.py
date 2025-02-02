@@ -1,30 +1,29 @@
-from fastapi import UploadFile
+from fastapi import APIRouter, UploadFile
 from fastapi.responses import FileResponse
 import shutil
 import os
 
-async def upload_image(file: UploadFile):
-    # Define a directory to save the uploaded images
-    upload_dir = "uploads"
-    os.makedirs(upload_dir, exist_ok=True)
+router = APIRouter()
 
-    # Create a file path where the image will be saved
-    file_location = os.path.join(upload_dir, file.filename)
+# תיקייה שבה נשמור את התמונות
+STATIC_DIR = "static"
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+@router.post("/upload-image/")
+async def upload_image(file: UploadFile):
+    # שמירת קובץ בנתיב תקין
+    file_path = os.path.join(STATIC_DIR, file.filename)
     
-    # Save the uploaded image to the directory
-    with open(file_location, "wb") as buffer:
+    with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    return {"filename": file.filename, "file_location": file_location}
+    # החזרת URL שניתן לגשת אליו מה-Frontend
+    return {"image_url": f"/static/{file.filename}"}
 
+@router.get("/static/{image_name}")
+async def get_image(image_name: str):
+    file_path = os.path.join(STATIC_DIR, image_name)
 
-def get_image(image_name: str):
-    # Define the directory where the images are stored
-    upload_dir = "uploads"
-    file_path = os.path.join(upload_dir, image_name)
-
-    # Check if the file exists before returning it
     if os.path.exists(file_path):
-        return FileResponse(file_path)  # Return the image file as a response
-    else:
-        return {"message": "Image not found"}
+        return FileResponse(file_path)
+    return {"message": "Image not found"}
