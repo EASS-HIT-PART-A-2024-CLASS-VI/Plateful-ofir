@@ -12,11 +12,6 @@ class UserProfile(BaseModel):
     # Update to use the new `ConfigDict` for compatibility
     model_config = ConfigDict(from_attributes=True)
 
-class UserCreate(BaseModel):
-    username: str
-    preferences: Optional[str] = None
-
-
 class User(Base):
     __tablename__ = "users"
     __table_args__ = {"extend_existing": True}
@@ -24,7 +19,16 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)  
     dietary_preferences = Column(JSON, nullable=True)
 
     recipes = relationship("Recipe", back_populates="creator") 
     shopping_lists = relationship("ShoppingList", back_populates="user")
+
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str  
+    dietary_preferences: Optional[list[str]] = None
+
+    model_config = ConfigDict(from_attributes=True)

@@ -31,7 +31,13 @@ export default function CreateRecipe() {
   const handleSubmit = async (e) => {
     e.preventDefault();
   
-    const userId = localStorage.getItem("user_id"); // 👈 משוך את ה-ID מה-Storage
+    const userId = localStorage.getItem("user_id"); // ✅ משיכת ה-ID של המשתמש
+    console.log("📡 Sending user_id:", userId); // 🔍 בדיקה ראשונה
+  
+    if (!userId) {
+      toast.error("❌ You must be logged in to create a recipe.");
+      return;
+    }
   
     const formData = new FormData();
     formData.append("name", recipe.name);
@@ -40,8 +46,14 @@ export default function CreateRecipe() {
     formData.append("servings", recipe.servings);
     formData.append("categories", recipe.categories);
     formData.append("tags", recipe.tags);
-    formData.append("creator_id", userId);  // 👈 שולחים את ה-ID של המשתמש
+    formData.append("creator_id", userId);  // ✅ בדיקה – האם נשלח נכון?
+  
     if (image) formData.append("image", image);
+  
+    console.log("📡 Sending FormData:");
+    for (let pair of formData.entries()) {
+      console.log(`${pair[0]}: ${pair[1]}`);
+    }
   
     try {
       const response = await fetch("http://localhost:8000/recipes/", {
@@ -55,25 +67,13 @@ export default function CreateRecipe() {
       if (!response.ok) throw new Error(data.detail || "Failed to create recipe");
   
       toast.success("Recipe created successfully!");
-  
-      // 👇 מרענן את רשימת המתכונים באזור האישי
-      setUserRecipes((prevRecipes) => [...prevRecipes, data.recipe]);
-  
-      setRecipe({
-        name: "",
-        preparation_steps: "",
-        cooking_time: "",
-        servings: "",
-        categories: "",
-        tags: "",
-      });
-      setImage(null);
     } catch (error) {
       console.error("❌ Error creating recipe:", error);
-      toast.error("❌ Failed to create recipe. Please try again.");
+      toast.error("❌ Failed to create recipe.");
     }
   };
   
+
 
   return (
     <div className="p-6 max-w-4xl mx-auto">

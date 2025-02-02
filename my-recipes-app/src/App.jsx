@@ -3,6 +3,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; 
 import { UserProvider } from "./context/UserContext";
 
+import SignUp from "./pages/SignUp"
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/recipes/edit/:id" element={<EditRecipe />} /> 
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
       </Routes>
     </Router>
     </UserProvider>

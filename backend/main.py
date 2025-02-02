@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Union
 from datetime import datetime
 import json
 import os
+from passlib.context import CryptContext
 from models.recipe_model import (
     Comment, Recipe, Ingredient, NutritionalInfo, SharedRecipe, 
     ShoppingList, CookingTimer
@@ -15,6 +16,7 @@ from db.database import engine, get_db, init_db
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from models.recipe_model import Comment
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,10 +27,6 @@ async def lifespan(app: FastAPI):
     pass
 
 app = FastAPI(lifespan=lifespan)
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to Plateful API"}
 
 app.add_middleware(
     CORSMiddleware,
@@ -94,10 +92,14 @@ class RecipeCreate(BaseModel):
     ingredients: List[IngredientCreate] = []
     timers: List[TimerCreate] = []
 
-class UserCreate(BaseModel):
+class UserRegister(BaseModel):
     username: str
-    email: EmailStr
-    dietary_preferences: List[str]
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
 
 class SuggestRecipeRequest(BaseModel):
     ingredients: List[IngredientCreate]
@@ -119,7 +121,7 @@ async def create_recipe(
     categories: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
-    creator_id: int = Form(None),
+    creator_id:  Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     try:
@@ -148,7 +150,11 @@ async def create_recipe(
         db.commit()
         db.refresh(new_recipe)
 
-        return {"message": "Recipe created successfully", "recipe_id": new_recipe.id}
+        return {
+        "message": "Recipe created successfully",
+        "recipe_id": new_recipe.id,
+        "creator_id": new_recipe.creator_id
+        }
 
     except Exception as e:
         db.rollback()
@@ -269,16 +275,49 @@ async def scale_recipe(
     return {"scaled_ingredients": scaled_ingredients}
 
 # User endpoints
-@app.post("/users/")
-async def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = User(
+@app.post("/register/", include_in_schema=True)
+async def register_user(user: UserRegister, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_password = pwd_context.hash(user.password) 
+
+    new_user = User(
         username=user.username,
         email=user.email,
-        dietary_preferences=user.dietary_preferences
+        password_hash=hashed_password  
     )
-    db.add(db_user)
+
+    db.add(new_user)
     db.commit()
-    return {"message": "User created successfully", "user_id": db_user.id}
+    db.refresh(new_user)
+
+    return {"message": "User registered successfully"}
+
+
+@app.post("/login/")
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not pwd_context.verify(user.password, db_user.password_hash):  
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    return {"message": "Login successful", "user_id": db_user.id}
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "dietary_preferences": user.dietary_preferences
+    }
 
 @app.post("/recipes/{recipe_id}/share/{user_id}")
 async def share_recipe(
