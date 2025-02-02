@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query, Form
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from datetime import datetime
 import json
+import os
 from models.recipe_model import (
     Comment, Recipe, Ingredient, NutritionalInfo, SharedRecipe, 
     ShoppingList, CookingTimer
@@ -14,7 +15,6 @@ from db.database import engine, get_db, init_db
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from models.recipe_model import Comment
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +29,14 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Plateful API"}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # זה ה-Frontend שלך
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Pydantic models
 class NutritionalValues(BaseModel):
@@ -76,6 +84,16 @@ class RecipeCreate(BaseModel):
     ingredients: List[IngredientCreate]
     timers: List[TimerCreate]
 
+class RecipeCreate(BaseModel):
+    name: str
+    preparation_steps: str
+    cooking_time: int
+    servings: int
+    categories: str
+    tags: str
+    ingredients: List[IngredientCreate] = []
+    timers: List[TimerCreate] = []
+
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -91,137 +109,52 @@ class CommentRequest(BaseModel):
     user_id: int
     content: str
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # זה ה-Frontend שלך
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Recipe endpoints
 @app.post("/recipes/")
 async def create_recipe(
-    recipe: RecipeCreate,
-    current_user_id: int = 1,
+    name: Optional[str] = Form(None),
+    preparation_steps: Optional[str] = Form(None),
+    cooking_time: Optional[int] = Form(None),
+    servings: Optional[int] = Form(None),
+    categories: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    creator_id: int = Form(None),
     db: Session = Depends(get_db)
 ):
     try:
-        # Validate basic recipe data
-        if recipe.cooking_time < 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Cooking time must be positive"
-            )
-        if recipe.servings <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Number of servings must be positive"
-            )
-            
-        print(f"Received recipe: {recipe}")
-        
-        # Create recipe
-        db_recipe = Recipe(
-            name=recipe.name,
-            preparation_steps=recipe.preparation_steps,
-            cooking_time=recipe.cooking_time,
-            servings=recipe.servings,
-            categories=recipe.categories,
-            tags=recipe.tags,
-            creator_id=current_user_id
-        )
-        
-        # Add ingredients
-        total_calories = 0
-        total_protein = 0
-        total_carbs = 0
-        total_fats = 0
-        
-        if not recipe.ingredients:
-            raise HTTPException(
-                status_code=400,
-                detail="Recipe must have at least one ingredient"
-            )
-        
-        for ing in recipe.ingredients:
-            # Validate ingredient data
-            if ing.quantity <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Ingredient '{ing.name}' must have a positive quantity"
-                )
+        if not os.path.exists("static"):
+            os.makedirs("static")  # 👈 יצירת תיקייה אם היא לא קיימת
 
-            # Create ingredient object
-            db_ingredient = Ingredient(
-                name=ing.name,
-                quantity=ing.quantity,
-                unit=ing.unit,
-                nutritional_values={
-                    "calories": ing.nutritional_values.calories,
-                    "protein": ing.nutritional_values.protein,
-                    "carbs": ing.nutritional_values.carbs,
-                    "fats": ing.nutritional_values.fats
-                },
-                recipe=db_recipe
-            )
-            
-            # Calculate nutritional values
-            serving_factor = ing.quantity / 100
-            total_calories += ing.nutritional_values.calories * serving_factor
-            total_protein += ing.nutritional_values.protein * serving_factor
-            total_carbs += ing.nutritional_values.carbs * serving_factor
-            total_fats += ing.nutritional_values.fats * serving_factor
-            
-            db.add(db_ingredient)
-        
-        # Create nutritional info
-        nutritional_info = NutritionalInfo(
-            calories=total_calories,
-            protein=total_protein,
-            carbs=total_carbs,
-            fats=total_fats,
-            serving_size=1,
-            recipe=db_recipe
+        image_url = None
+        if image:
+            image_path = f"static/{image.filename}"
+            with open(image_path, "wb") as buffer:
+                buffer.write(await image.read())
+            image_url = f"/{image_path}"
+
+        new_recipe = Recipe(
+            name=name,
+            preparation_steps=preparation_steps,
+            cooking_time=cooking_time,
+            servings=servings,
+            categories=categories,
+            tags=tags,
+            image_url=image_url, 
+            creator_id=creator_id 
         )
-        db.add(nutritional_info)
-        
-        # Add timers
-        for timer in recipe.timers:
-            if timer.duration <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Timer duration must be positive"
-                )
-                
-            db_timer = CookingTimer(
-                step_number=timer.step_number,
-                duration=timer.duration,
-                label=timer.label,
-                recipe=db_recipe
-            )
-            db.add(db_timer)
-        
-        try:
-            db.add(db_recipe)
-            db.commit()
-            db.refresh(db_recipe)
-            return {"message": "Recipe created successfully", "recipe_id": db_recipe.id}
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-            
-    except HTTPException as he:
-        # Re-raise HTTP exceptions
-        raise he
-    except ValueError as ve:
-        # Handle validation errors
-        raise HTTPException(status_code=400, detail=str(ve))
+
+        db.add(new_recipe)
+        db.commit()
+        db.refresh(new_recipe)
+
+        return {"message": "Recipe created successfully", "recipe_id": new_recipe.id}
+
     except Exception as e:
-        # Handle unexpected errors
-        print(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
+        db.rollback()
+        print(f"❌ Error in create_recipe: {str(e)}")  
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.get("/recipes/")
 async def get_recipes(
     category: Optional[str] = None,
@@ -292,17 +225,18 @@ async def get_recipe(
 
 @app.get("/users/{user_id}/recipes")
 async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
-    recipes = db.query(Recipe).filter(Recipe.creator_id == user_id).all()
-    
-    return [
-        {
-            "id": recipe.id,
-            "name": recipe.name,
-            "categories": recipe.categories,
-            "rating": recipe.rating
-        }
-        for recipe in recipes
-    ]
+    try:
+        user_recipes = db.query(Recipe).filter(Recipe.creator_id == user_id).all()
+
+        if not user_recipes:
+            return []
+
+        return user_recipes
+
+    except Exception as e:
+        print(f"❌ Error fetching user recipes: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/users/{user_id}/notifications")
 async def get_user_notifications(user_id: int, db: Session = Depends(get_db)):
@@ -438,21 +372,21 @@ async def rate_recipe(
 @app.put("/recipes/{recipe_id}")
 async def update_recipe(
     recipe_id: int,
-    recipe: RecipeCreate,
+    recipe: RecipeCreate,  # 👈 מצפה לכל הנתונים כולל `ingredients` ו-`timers`
     current_user_id: int = Query(..., description="User ID updating the recipe"),
     db: Session = Depends(get_db)
 ):
-    # Check if recipe exists
+    # בדיקת קיום המתכון
     db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not db_recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
     
-    # Check if user owns the recipe
+    # בדיקת הרשאות משתמש
     if db_recipe.creator_id != current_user_id:
         raise HTTPException(status_code=403, detail="Not authorized to edit this recipe")
     
     try:
-        # Update basic recipe information
+        # עדכון הנתונים הבסיסיים
         db_recipe.name = recipe.name
         db_recipe.preparation_steps = recipe.preparation_steps
         db_recipe.cooking_time = recipe.cooking_time
@@ -460,11 +394,11 @@ async def update_recipe(
         db_recipe.categories = recipe.categories
         db_recipe.tags = recipe.tags
         
-        # Delete existing ingredients and timers
+        # מחיקת המרכיבים והטיימרים הקודמים
         db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
         db.query(CookingTimer).filter(CookingTimer.recipe_id == recipe_id).delete()
         
-        # Add new ingredients
+        # הוספת מרכיבים חדשים
         total_calories = 0
         total_protein = 0
         total_carbs = 0
@@ -498,7 +432,7 @@ async def update_recipe(
             
             db.add(db_ingredient)
         
-        # Update nutritional info
+        # עדכון המידע התזונתי
         if db_recipe.nutritional_info:
             db_recipe.nutritional_info.calories = total_calories
             db_recipe.nutritional_info.protein = total_protein
@@ -515,7 +449,7 @@ async def update_recipe(
             )
             db.add(nutritional_info)
         
-        # Add new timers
+        # הוספת טיימרים חדשים
         for timer in recipe.timers:
             if timer.duration <= 0:
                 raise HTTPException(

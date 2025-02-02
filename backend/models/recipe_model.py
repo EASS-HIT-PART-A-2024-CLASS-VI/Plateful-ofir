@@ -18,9 +18,10 @@ class Recipe(Base):
     servings = Column(Integer, default=1)
     categories = Column(String)
     tags = Column(String, nullable=True)
-    rating = Column(Float, default=0.0)  
-    rating_count = Column(Integer, default=0)  
+    rating = Column(Float, default=0.0)
+    rating_count = Column(Integer, default=0)
     creator_id = Column(Integer, ForeignKey('users.id'))
+    image_url = Column(String, nullable=True)  
 
     comments = relationship("Comment", back_populates="recipe", cascade="all, delete-orphan")
     ingredients = relationship("Ingredient", back_populates="recipe", cascade="all, delete-orphan")

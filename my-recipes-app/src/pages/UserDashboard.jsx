@@ -1,89 +1,165 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+import { useContext } from "react";
+import { UserContext } from "../context/UserContext";
+
 
 export default function UserDashboard() {
-  const [user, setUser] = useState({ name: "John Doe", email: "john@example.com" }); // 👈 להחליף בנתונים אמיתיים מה-Backend
+  const navigate = useNavigate();
+  const userId = localStorage.getItem("user_id"); // 👈 משיכת ה-ID של המשתמש המחובר
+  console.log("🔍 Checking UserContext:", useContext(UserContext));
+
   const [userRecipes, setUserRecipes] = useState([]);
-  const [sharedRecipes, setSharedRecipes] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const userId = 1; // 👈 יש לשנות ל-ID של המשתמש המחובר (לפי מערכת האימות שלך)
+  const [newRecipe, setNewRecipe] = useState({
+    name: "",
+    preparation_steps: "",
+    cooking_time: "",
+    servings: "",
+    categories: "",
+    tags: "",
+  });
+  const [image, setImage] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    // קבלת רשימת המתכונים שהמשתמש כתב
+    const userId = localStorage.getItem("user_id"); // 👈 משיכת ה-ID של המשתמש המחובר
+  
+    if (!userId) {
+      console.error("❌ No user ID found, redirecting to login.");
+      toast.error("You must be logged in to view your recipes.");
+      navigate("/login"); // 👈 נשלח את המשתמש למסך התחברות
+      return;
+    }
+  
     fetch(`http://localhost:8000/users/${userId}/recipes`)
-      .then((response) => response.json())
-      .then((data) => setUserRecipes(data || [])) // 👈 לוודא שהערך לא יהיה undefined
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then((error) => {
+            console.error("❌ Error fetching user recipes:", error);
+            throw new Error(error.detail || "Failed to fetch recipes");
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data.length === 0) {
+          console.warn("ℹ️ No recipes found for this user.");
+        }
+        setUserRecipes(data);
+      })
       .catch((error) => console.error("❌ Error fetching user recipes:", error));
-
-    // קבלת רשימת המתכונים ששיתפו עם המשתמש
-    fetch(`http://localhost:8000/users/${userId}/shared-recipes`)
-      .then((response) => response.json())
-      .then((data) => setSharedRecipes(data || []))
-      .catch((error) => console.error("❌ Error fetching shared recipes:", error));
-
-    // קבלת התראות על תגובות ושיתופים
-    fetch(`http://localhost:8000/users/${userId}/notifications`)
-      .then((response) => response.json())
-      .then((data) => setNotifications(data || []))
-      .catch((error) => console.error("❌ Error fetching notifications:", error));
   }, []);
+  
+  
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewRecipe((prevRecipe) => ({
+      ...prevRecipe,
+      [name]: value,
+    }));
+  };
+
+  const handleImageChange = (e) => {
+    setImage(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    for (let key in newRecipe) {
+      formData.append(key, newRecipe[key]);
+    }
+    if (image) {
+      formData.append("image", image);
+    }
+
+    try {
+      const response = await fetch("http://localhost:8000/recipes/", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Failed to create recipe");
+
+      toast.success("Recipe created successfully!");
+      setShowForm(false);
+      setNewRecipe({
+        name: "",
+        preparation_steps: "",
+        cooking_time: "",
+        servings: "",
+        categories: "",
+        tags: "",
+      });
+      setImage(null);
+
+      // רענון רשימת המתכונים
+      fetch(`http://localhost:8000/users/${userId}/recipes`)
+        .then((response) => response.json())
+        .then(setUserRecipes);
+      
+    } catch (error) {
+      console.error("❌ Error creating recipe:", error);
+      toast.error("❌ Failed to create recipe. Please try again.");
+    }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-4 text-center">Welcome, {user.name}!</h2>
-      <p className="text-lg text-gray-700 text-center">{user.email}</p>
+      <h2 className="text-3xl font-bold mb-4 text-center">My Dashboard</h2>
 
-      {/* 🔔 התראות */}
-      <h3 className="text-2xl font-semibold mt-6">Notifications</h3>
-      <ul className="border p-4 rounded-lg bg-gray-100">
-        {notifications.length > 0 ? (
-          notifications.map((notif, index) => (
-            <li key={`notif-${index}`} className="border-b p-2">
-              <p>{notif.message}</p>
-              {notif.link && (
-                <Link to={notif.link} className="text-blue-500">
-                  View
-                </Link>
-              )}
-            </li>
-          ))
-        ) : (
-          <p className="text-gray-500">No new notifications.</p>
-        )}
-      </ul>
+      <button onClick={() => setShowForm(!showForm)} className="bg-green-500 text-white px-4 py-2 rounded w-full mb-4">
+        {showForm ? "Cancel" : "Create New Recipe"}
+      </button>
 
-      {/* 📝 מתכונים של המשתמש */}
-      <h3 className="text-2xl font-semibold mt-6">Your Recipes</h3>
-      <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {showForm && (
+        <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-gray-100">
+          <h3 className="text-2xl font-semibold text-center">Create a New Recipe</h3>
+
+          <label className="block font-semibold">Recipe Name:</label>
+          <input type="text" name="name" value={newRecipe.name} onChange={handleChange} className="border p-2 w-full" required />
+
+          <label className="block font-semibold">Preparation Steps:</label>
+          <textarea name="preparation_steps" value={newRecipe.preparation_steps} onChange={handleChange} className="border p-2 w-full" required />
+
+          <label className="block font-semibold">Cooking Time (minutes):</label>
+          <input type="number" name="cooking_time" value={newRecipe.cooking_time} onChange={handleChange} className="border p-2 w-full" required />
+
+          <label className="block font-semibold">Number of Servings:</label>
+          <input type="number" name="servings" value={newRecipe.servings} onChange={handleChange} className="border p-2 w-full" required />
+
+          <label className="block font-semibold">Categories:</label>
+          <input type="text" name="categories" value={newRecipe.categories} onChange={handleChange} className="border p-2 w-full" required />
+
+          <label className="block font-semibold">Tags:</label>
+          <input type="text" name="tags" value={newRecipe.tags} onChange={handleChange} className="border p-2 w-full" required />
+
+          <label className="block font-semibold">Recipe Image:</label>
+          <input type="file" onChange={handleImageChange} className="border p-2 w-full" accept="image/*" />
+
+          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded w-full">Create Recipe</button>
+        </form>
+      )}
+
+        <h3 className="text-2xl font-semibold mt-6">Your Recipes</h3>
         {userRecipes.length > 0 ? (
-          userRecipes.map((recipe) => (
-            <li key={`recipe-${recipe.id}`} className="border p-4 rounded-lg shadow-lg bg-white">
-              <h3 className="text-xl font-semibold text-gray-800">{recipe.name}</h3>
-              <div className="flex justify-between">
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {userRecipes.map((recipe) => (
+            <li key={recipe.id} className="border p-4 rounded-lg shadow-lg bg-white">
+                <h3 className="text-xl font-semibold text-gray-800">{recipe.name}</h3>
                 <Link to={`/recipes/${recipe.id}`} className="text-blue-500">View</Link>
-                <Link to={`/recipes/edit/${recipe.id}`} className="text-green-500">Edit</Link>
-              </div>
             </li>
-          ))
+            ))}
+        </ul>
         ) : (
-          <p className="text-center text-gray-600 col-span-2">No recipes found.</p>
+        <p className="text-center text-gray-600 mt-4">No recipes found. Start by creating a new one!</p>
         )}
-      </ul>
-
-      {/* 🔄 מתכונים שהמשתמש קיבל בשיתוף */}
-      <h3 className="text-2xl font-semibold mt-6">Shared with You</h3>
-      <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {sharedRecipes.length > 0 ? (
-          sharedRecipes.map((recipe) => (
-            <li key={`shared-${recipe.id}`} className="border p-4 rounded-lg shadow-lg bg-white">
-              <h3 className="text-xl font-semibold text-gray-800">{recipe.name}</h3>
-              <Link to={`/recipes/${recipe.id}`} className="text-blue-500">View</Link>
-            </li>
-          ))
-        ) : (
-          <p className="text-center text-gray-600 col-span-2">No shared recipes yet.</p>
-        )}
-      </ul>
     </div>
   );
 }
