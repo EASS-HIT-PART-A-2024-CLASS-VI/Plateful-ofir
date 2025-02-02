@@ -1,16 +1,70 @@
-# קבצים של Python שלא צריך ב-Git
+# Python Virtual Environment
+venv/
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 
-# קבצי סביבה עם מידע רגיש
-.env
-
-# מסד נתונים זמני (SQLite)
+# Database & Cache
+*.db
+*.sqlite
+*.sqlite3
 test.db
+migrations/
+*.log
 
-# קבצים של Pytest שלא צריך
-.pytest_cache/
+# Node.js Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# קבצי מערכת של VSCode
+# Editor & IDE Settings
 .vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+*.sock
+docker-compose.override.yml
+
+# Redis Data
+dump.rdb
+
+# Build Files
+dist/
+build/
+
+# Uploaded Files (User images, cached files, etc.)
+uploads/
+
+# Test Cache & Coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# React App Build Files
+my-recipes-app/node_modules/
+my-recipes-app/build/
+my-recipes-app/.cache/
+my-recipes-app/.eslintcache/
+my-recipes-app/.turbo/
+
+# FastAPI Static Files (if applicable)
+staticfiles/
