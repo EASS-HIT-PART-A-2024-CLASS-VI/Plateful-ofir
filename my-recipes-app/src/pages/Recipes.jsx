@@ -88,22 +88,23 @@ export default function Recipes() {
       </div>
 
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredRecipes.length > 0 ? (
-          filteredRecipes.map((recipe) => (
-            <li key={recipe.id} className="border p-4 rounded-lg shadow-lg bg-white">
-              <h3 className="text-xl font-semibold text-gray-800">{recipe.name}</h3>
-              <p className="text-sm text-gray-500">Cooking Time: {recipe.cooking_time} min</p>
-              <p className="text-sm text-gray-500">Category: {recipe.categories}</p>
-              <p className="text-sm text-gray-500">Rating: ⭐ {recipe.rating.toFixed(1)}</p>
-              <Link to={`/recipes/${recipe.id}`} className="text-blue-500 mt-2 inline-block">
-                View Details
-              </Link>
-            </li>
-          ))
-        ) : (
-          <p className="text-center text-gray-600 col-span-2">No recipes found.</p>
-        )}
-      </ul>
+  {filteredRecipes.length > 0 ? (
+    filteredRecipes.map((recipe) => (
+      <li key={recipe.id} className="border p-4 rounded-lg shadow-lg bg-white">
+        <img src={recipe.image_url || "http://localhost:8000/static/default-recipe.jpg"} alt={recipe.name} className="w-full h-40 object-cover rounded-md mb-2" />
+        <h3 className="text-xl font-semibold text-gray-800">{recipe.name}</h3>
+        <p className="text-sm text-gray-500">Cooking Time: {recipe.cooking_time} min</p>
+        <p className="text-sm text-gray-500">Category: {recipe.categories}</p>
+        <p className="text-sm text-gray-500">Rating: ⭐ {recipe.rating.toFixed(1)}</p>
+        <Link to={`/recipes/${recipe.id}`} className="text-blue-500 mt-2 inline-block">
+          View Details
+        </Link>
+      </li>
+    ))
+  ) : (
+    <p className="text-center text-gray-600 col-span-2">No recipes found.</p>
+  )}
+</ul>
     </div>
   );
 }

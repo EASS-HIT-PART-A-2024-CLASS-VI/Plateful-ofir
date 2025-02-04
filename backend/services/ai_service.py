@@ -1,3 +1,4 @@
+from urllib import request
 from fastapi import HTTPException
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -6,6 +7,10 @@ from dotenv import load_dotenv
 from googletrans import Translator, LANGUAGES
 import asyncio
 import re
+import requests
+from typing import List, Dict
+from deep_translator import GoogleTranslator
+
 
 # Load environment variables from .env
 load_dotenv()
@@ -230,3 +235,77 @@ def setup_ai_routes(app):
                 )
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        
+# 🛠️ פרטי API של USDA
+USDA_API_KEY = os.getenv("USDA_API_KEY")
+USDA_API_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
+
+def fetch_nutritional_info(ingredient_name: str, quantity: float, unit: str) -> Dict:
+    """ Fetch nutritional data from USDA FoodData Central API """
+    if not USDA_API_KEY:
+        raise ValueError("USDA API key is missing! Please add it to the .env file")
+
+    # 🔄 תרגום שם המרכיב לאנגלית
+    translated_name = GoogleTranslator(source="auto", target="en").translate(ingredient_name)
+    print(f"🌍 Translating '{ingredient_name}' to English: '{translated_name}'")
+
+    # 🔍 שליחת בקשה לחיפוש המרכיב באנגלית
+    params = {
+        "query": translated_name,
+        "api_key": USDA_API_KEY
+    }
+
+    response = requests.get(USDA_API_URL, params=params)
+    data = response.json()
+
+    if "foods" not in data or not data["foods"]:
+        raise ValueError(f"❌ No nutritional data found for {translated_name}")
+
+    # ✅ לקיחת התוצאה הראשונה (הרלוונטית ביותר)
+    food = data["foods"][0]
+
+    # שליפת הערכים התזונתיים
+    nutrients = {nutrient["nutrientName"]: nutrient["value"] for nutrient in food["foodNutrients"]}
+
+    return {
+        "calories": nutrients.get("Energy", 0),
+        "protein": nutrients.get("Protein", 0),
+        "carbs": nutrients.get("Carbohydrate, by difference", 0),
+        "fats": nutrients.get("Total lipid (fat)", 0)
+    }
+
+
+def calculate_nutritional_info(ingredients: List[Dict], servings: int) -> Dict:
+    """ Calculate recipe nutritional values using USDA API """
+    print(f"🧮 Calculating nutrition for {len(ingredients)} ingredients, {servings} servings")
+
+    total_nutrition = {"calories": 0, "protein": 0, "carbs": 0, "fats": 0}
+
+    for ingredient in ingredients:
+        try:
+            nutrition = fetch_nutritional_info(
+                ingredient["name"], 
+                float(ingredient["quantity"]), 
+                ingredient["unit"]
+            )
+
+            total_nutrition["calories"] += nutrition["calories"]
+            total_nutrition["protein"] += nutrition["protein"]
+            total_nutrition["carbs"] += nutrition["carbs"]
+            total_nutrition["fats"] += nutrition["fats"]
+        except ValueError as e:
+            print(f"⚠️ Skipping ingredient {ingredient['name']} due to error: {e}")
+
+    # 🎯 חישוב ערכים לפי מנה
+    per_serving = {
+        key: round(value / float(servings), 2) 
+        for key, value in total_nutrition.items()
+    }
+    
+    per_serving["portion_size"] = round(
+        sum(float(ing["quantity"]) for ing in ingredients) / float(servings), 
+        2
+    )
+
+    print(f"✅ Final nutrition per serving: {per_serving}")
+    return per_serving

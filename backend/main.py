@@ -42,6 +42,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Pydantic models
 class NutritionalValues(BaseModel):
+    portion_size: int
     calories: int
     protein: int
     carbs: int
@@ -119,6 +120,8 @@ class CommentRequest(BaseModel):
 STATIC_DIR = "static"
 os.makedirs(STATIC_DIR, exist_ok=True)  # ודא שהתיקייה קיימת
 
+from services.ai_service import calculate_nutritional_info
+
 @app.post("/recipes/")
 async def create_recipe(
     name: str = Form(...),
@@ -128,59 +131,68 @@ async def create_recipe(
     categories: str = Form(...),
     tags: str = Form(...),
     creator_id: str = Form(...),
+    ingredients: str = Form(...),  
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     try:
         creator_id = int(creator_id)
+        servings = int(servings)
     except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid creator_id")
+        raise HTTPException(status_code=400, detail="Invalid creator_id or servings")
 
-    # Handle image upload if provided
-    image_url = None
-    if image:
-        try:
-            # Create unique filename using timestamp
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            image_filename = f"{timestamp}_{image.filename}"
-            image_path = os.path.join(STATIC_DIR, image_filename)
-            
-            # Save image to static directory
-            with open(image_path, "wb") as buffer:
-                shutil.copyfileobj(image.file, buffer)
-            
-            # Set relative URL for database
-            image_url = f"/static/{image_filename}"
-            print(f"✅ Image saved successfully at: {image_url}")
-        except Exception as e:
-            print(f"🚨 Error saving image: {e}")
-            raise HTTPException(status_code=500, detail=f"Error saving image: {str(e)}")
-
-    # Create recipe with image URL
-    new_recipe = Recipe(
-        name=name,
-        preparation_steps=preparation_steps,
-        cooking_time=cooking_time,
-        servings=servings,
-        categories=categories,
-        tags=tags,
-        creator_id=creator_id,
-        image_url=image_url
-    )
+    ingredients_list = json.loads(ingredients)
 
     try:
+        print(f"🔄 Calculating nutritional info for ingredients: {ingredients_list}")
+        nutrition_values = calculate_nutritional_info(ingredients_list, servings)
+        print(f"✅ Computed Nutritional Info: {nutrition_values}")
+
+        new_recipe = Recipe(
+            name=name,
+            preparation_steps=preparation_steps,
+            cooking_time=int(cooking_time),
+            servings=servings,
+            categories=categories,
+            tags=tags,
+            creator_id=creator_id
+        )
+
         db.add(new_recipe)
         db.commit()
         db.refresh(new_recipe)
-        return {
-            "message": "Recipe created successfully",
-            "recipe_id": new_recipe.id,
-            "image_url": image_url
-        }
+
+        # ✅ שמירת מצרכים
+        for ingredient in ingredients_list:
+            new_ingredient = Ingredient(
+                name=ingredient["name"],
+                quantity=float(ingredient["quantity"]),
+                unit=ingredient["unit"],
+                recipe_id=new_recipe.id
+            )
+            db.add(new_ingredient)
+
+        # ✅ שמירת הנתונים התזונתיים כולל portion_size
+        nutritional_info = NutritionalInfo(
+            recipe_id=new_recipe.id,
+            portion_size=float(nutrition_values["portion_size"]),
+            calories=float(nutrition_values["calories"]),
+            protein=float(nutrition_values["protein"]),
+            carbs=float(nutrition_values["carbs"]),
+            fats=float(nutrition_values["fats"]),
+        )
+        db.add(nutritional_info)
+        db.commit()
+
+        print(f"✅ Successfully saved nutritional info to DB for recipe {new_recipe.id}")
+
+        return {"message": "Recipe created successfully", "recipe_id": new_recipe.id}
+
     except Exception as e:
-        db.rollback()
+        db.rollback()  
+        print(f"❌ Error creating recipe: {e}")
         raise HTTPException(status_code=500, detail=f"Error creating recipe: {str(e)}")
- 
+
 @app.get("/recipes/")
 async def get_recipes(
     category: Optional[str] = None,
@@ -189,207 +201,162 @@ async def get_recipes(
     db: Session = Depends(get_db)
 ):
     query = db.query(Recipe)
-    
+
     if category:
         query = query.filter(Recipe.categories.contains(category))
     if tag:
         query = query.filter(Recipe.tags.contains(tag))
-    
+
     if sort_by == "rating":
         query = query.order_by(Recipe.rating.desc())
 
-    # ✅ ודאי שכל מתכון מחזיר גם את `image_url`
     recipes = query.all()
+
     return [
         {
             "id": r.id,
             "name": r.name,
+            "ingredients": [
+                {
+                    "id": ing.id,
+                    "name": ing.name,
+                    "quantity": ing.quantity,
+                    "unit": ing.unit
+                }
+                for ing in r.ingredients
+            ] if r.ingredients else [],
+            "preparation_steps": r.preparation_steps,
             "cooking_time": r.cooking_time,
             "categories": r.categories,
             "rating": r.rating,
             "creator_id": r.creator_id,
-            "image_url": r.image_url,  # ✅ החזרת הנתיב של התמונה
+            "image_url": r.image_url,
+            "nutritional_info": {
+                "portion_size": r.nutritional_info.portion_size if r.nutritional_info else 0,
+                "calories": r.nutritional_info.calories if r.nutritional_info else 0,
+                "protein": r.nutritional_info.protein if r.nutritional_info else 0,
+                "carbs": r.nutritional_info.carbs if r.nutritional_info else 0,
+                "fats": r.nutritional_info.fats if r.nutritional_info else 0,
+            } if r.nutritional_info else None  
         }
         for r in recipes
     ]
 
 
 @app.get("/recipes/{recipe_id}")
-async def get_recipe(
-    recipe_id: int,
-    db: Session = Depends(get_db)
-):
+async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-    if recipe is None:
+    if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    print(f"📸 Checking image_url: {recipe.image_url}")  # ✅ בדיקה אם השדה קיים
+    # ✅ שליפת הנתונים התזונתיים
+    nutritional_info = db.query(NutritionalInfo).filter(NutritionalInfo.recipe_id == recipe_id).first()
+    nutrition_data = {
+        "calories": nutritional_info.calories if nutritional_info else 0,
+        "protein": nutritional_info.protein if nutritional_info else 0,
+        "carbs": nutritional_info.carbs if nutritional_info else 0,
+        "fats": nutritional_info.fats if nutritional_info else 0,
+        "portion_size": nutritional_info.portion_size if nutritional_info else 100,
+    }
     
-    # ✅ ודאי שה-API מחזיר גם `image_url`
-    recipe_dict = {
+    print(f"📊 Nutritional info retrieved for recipe {recipe_id}: {nutrition_data}")
+
+    return {
         "id": recipe.id,
         "name": recipe.name,
-        "preparation_steps": recipe.preparation_steps,
+        "preparation_steps": recipe.preparation_steps if recipe.preparation_steps else "",
         "cooking_time": recipe.cooking_time,
         "servings": recipe.servings,
         "categories": recipe.categories,
         "tags": recipe.tags,
-        "rating": recipe.rating,
-        "creator_id": recipe.creator_id,
-        "image_url": recipe.image_url if recipe.image_url else None,  # ✅ החזרת הנתיב של התמונה
+        "image_url": recipe.image_url if recipe.image_url else "/static/default-recipe.jpg",
         "ingredients": [
             {
                 "id": ing.id,
                 "name": ing.name,
                 "quantity": ing.quantity,
-                "unit": ing.unit,
-                "nutritional_values": ing.nutritional_values
+                "unit": ing.unit
             }
-            for ing in recipe.ingredients
+            for ing in db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).all()
         ],
-        "nutritional_info": {
-            "calories": recipe.nutritional_info.calories,
-            "protein": recipe.nutritional_info.protein,
-            "carbs": recipe.nutritional_info.carbs,
-            "fats": recipe.nutritional_info.fats,
-            "serving_size": recipe.nutritional_info.serving_size
-        } if recipe.nutritional_info else None,
-        "timers": [
-            {
-                "step_number": timer.step_number,
-                "duration": timer.duration,
-                "label": timer.label
-            }
-            for timer in recipe.cooking_timers
-        ]
+        "nutritional_info": nutrition_data  
     }
-    
-    return recipe_dict
-
 
 @app.put("/recipes/{recipe_id}")
 async def update_recipe(
     recipe_id: int,
-    recipe: RecipeCreate,  # 👈 מצפה לכל הנתונים כולל `ingredients` ו-`timers`
-    current_user_id: int = Query(..., description="User ID updating the recipe"),
-    image: Optional[UploadFile] = File(None),  # ✅ תמיכה בעדכון תמונה
+    name: str = Form(...),
+    ingredients: str = Form(...),
+    preparation_steps: str = Form(...),
+    cooking_time: int = Form(...),
+    servings: int = Form(...),
+    categories: str = Form(...),
+    tags: str = Form(...),
+    current_user_id: int = Form(...),
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    # 🔎 בדיקת קיום המתכון
+    """ Update a recipe, including its ingredients and nutritional values """
+
     db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not db_recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    # 🔒 בדיקת הרשאות משתמש
     if db_recipe.creator_id != current_user_id:
         raise HTTPException(status_code=403, detail="Not authorized to edit this recipe")
 
-    try:
-        # ✏️ עדכון פרטי המתכון
-        db_recipe.name = recipe.name
-        db_recipe.preparation_steps = recipe.preparation_steps
-        db_recipe.cooking_time = recipe.cooking_time
-        db_recipe.servings = recipe.servings
-        db_recipe.categories = recipe.categories
-        db_recipe.tags = recipe.tags
+    # ✅ עדכון נתוני המתכון
+    db_recipe.name = name
+    db_recipe.preparation_steps = preparation_steps
+    db_recipe.cooking_time = cooking_time
+    db_recipe.servings = servings
+    db_recipe.categories = categories
+    db_recipe.tags = tags
 
-        # 📌 שמירת תמונה חדשה (אם קיימת)
-        if image:
-            image_filename = f"{recipe_id}_{image.filename}"
-            image_path = os.path.join(STATIC_DIR, image_filename)
+    new_ingredients = json.loads(ingredients)
 
-            # ✅ שמירת התמונה החדשה
-            with open(image_path, "wb") as buffer:
-                shutil.copyfileobj(image.file, buffer)
+    # ✅ מחיקת מרכיבים ישנים והוספת חדשים
+    db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
+    db.commit()
 
-            # ❌ מחיקת התמונה הישנה אם קיימת
-            if db_recipe.image_url:
-                old_image_path = db_recipe.image_url.replace("/static/", "static/")
-                if os.path.exists(old_image_path):
-                    os.remove(old_image_path)
+    for ingredient in new_ingredients:
+        new_ingredient = Ingredient(
+            name=ingredient["name"],
+            quantity=ingredient["quantity"],
+            unit=ingredient["unit"],
+            recipe_id=recipe_id
+        )
+        db.add(new_ingredient)
 
-            # ✅ עדכון URL של התמונה
-            db_recipe.image_url = f"/static/{image_filename}"
+    db.commit()
 
-        # ❌ מחיקת מרכיבים וטיימרים ישנים
-        db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
-        db.query(CookingTimer).filter(CookingTimer.recipe_id == recipe_id).delete()
-
-        # 🔄 הוספת מרכיבים חדשים
-        total_calories = 0
-        total_protein = 0
-        total_carbs = 0
-        total_fats = 0
-
-        for ing in recipe.ingredients:
-            if ing.quantity <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Ingredient '{ing.name}' must have a positive quantity"
-                )
-
-            db_ingredient = Ingredient(
-                name=ing.name,
-                quantity=ing.quantity,
-                unit=ing.unit,
-                nutritional_values={
-                    "calories": ing.nutritional_values.calories,
-                    "protein": ing.nutritional_values.protein,
-                    "carbs": ing.nutritional_values.carbs,
-                    "fats": ing.nutritional_values.fats
-                },
-                recipe=db_recipe
-            )
-
-            # 🔢 חישוב ערכים תזונתיים
-            serving_factor = ing.quantity / 100
-            total_calories += ing.nutritional_values.calories * serving_factor
-            total_protein += ing.nutritional_values.protein * serving_factor
-            total_carbs += ing.nutritional_values.carbs * serving_factor
-            total_fats += ing.nutritional_values.fats * serving_factor
-
-            db.add(db_ingredient)
-
-        # 🔄 עדכון מידע תזונתי
-        if db_recipe.nutritional_info:
-            db_recipe.nutritional_info.calories = total_calories
-            db_recipe.nutritional_info.protein = total_protein
-            db_recipe.nutritional_info.carbs = total_carbs
-            db_recipe.nutritional_info.fats = total_fats
-        else:
-            nutritional_info = NutritionalInfo(
-                calories=total_calories,
-                protein=total_protein,
-                carbs=total_carbs,
-                fats=total_fats,
-                serving_size=1,
-                recipe=db_recipe
-            )
-            db.add(nutritional_info)
-
-        # 🔄 הוספת טיימרים חדשים
-        for timer in recipe.timers:
-            if timer.duration <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Timer duration must be positive"
-                )
-
-            db_timer = CookingTimer(
-                step_number=timer.step_number,
-                duration=timer.duration,
-                label=timer.label,
-                recipe=db_recipe
-            )
-            db.add(db_timer)
-
-        db.commit()
-        return {"message": "Recipe updated successfully", "image_url": db_recipe.image_url}
-        
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    # 🔄 **חישוב מחדש של הנתונים התזונתיים**
+    nutrition_values = calculate_nutritional_info(new_ingredients, servings)
     
+    # ✅ עדכון או יצירה מחדש של הנתונים התזונתיים
+    nutritional_info = db.query(NutritionalInfo).filter(NutritionalInfo.recipe_id == recipe_id).first()
+    if nutritional_info:
+        nutritional_info.portion_size = nutrition_values["portion_size"]
+        nutritional_info.calories = nutrition_values["calories"]
+        nutritional_info.protein = nutrition_values["protein"]
+        nutritional_info.carbs = nutrition_values["carbs"]
+        nutritional_info.fats = nutrition_values["fats"]
+    else:
+        db.add(NutritionalInfo(
+            recipe_id=recipe_id,
+            portion_size=nutrition_values["portion_size"],
+            calories=nutrition_values["calories"],
+            protein=nutrition_values["protein"],
+            carbs=nutrition_values["carbs"],
+            fats=nutrition_values["fats"]
+        ))
+
+    db.commit()
+
+    print(f"✅ Updated Nutritional Info for Recipe {recipe_id}: {nutrition_values}")
+
+    return {"message": "Recipe updated successfully"}
+
 
 @app.get("/recipes/{recipe_id}/scale")
 async def scale_recipe(

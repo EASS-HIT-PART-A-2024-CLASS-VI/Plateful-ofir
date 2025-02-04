@@ -13,6 +13,7 @@ class Recipe(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
+    ingredients = relationship("Ingredient", back_populates="recipe", cascade="all, delete-orphan")
     preparation_steps = Column(String)
     cooking_time = Column(Integer)
     servings = Column(Integer, default=1)
@@ -24,7 +25,6 @@ class Recipe(Base):
     image_url = Column(String, nullable=True)  
 
     comments = relationship("Comment", back_populates="recipe", cascade="all, delete-orphan")
-    ingredients = relationship("Ingredient", back_populates="recipe", cascade="all, delete-orphan")
     nutritional_info = relationship("NutritionalInfo", back_populates="recipe", uselist=False, cascade="all, delete-orphan")
     creator = relationship("User", back_populates="recipes")
     shared_with = relationship("SharedRecipe", back_populates="recipe", cascade="all, delete-orphan")
@@ -51,7 +51,7 @@ class NutritionalInfo(Base):
     protein = Column(Float)
     carbs = Column(Float)
     fats = Column(Float)
-    serving_size = Column(Float)
+    portion_size = Column(Float)
     
     recipe = relationship("Recipe", back_populates="nutritional_info")
 

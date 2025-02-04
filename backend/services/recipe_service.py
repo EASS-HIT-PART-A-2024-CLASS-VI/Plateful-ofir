@@ -7,35 +7,31 @@ import redis
 # Connect to Redis for timers
 redis_client = redis.Redis(host='redis', port=6379, db=0)
 
-# Function to calculate nutritional info
-def calculate_nutritional_info(ingredients: List[Ingredient]) -> NutritionalInfo:
-    total_calories = 0
-    total_protein = 0
-    total_fat = 0
-    total_carbs = 0
-    for ingredient in ingredients:
-        total_calories += ingredient.calories
-        total_protein += ingredient.protein
-        total_fat += ingredient.fat
-        total_carbs += ingredient.carbs
-    return NutritionalInfo(calories=total_calories, protein=total_protein, fat=total_fat, carbs=total_carbs)
-
 # Function to create a new recipe
-def create_recipe(db, recipe_data):
+def create_recipe(db: Session, recipe_data: dict):
+    """Creates a new recipe and saves it to the database, including its ingredients."""
+    
     # Extract ingredients from recipe_data
-    ingredients_data = recipe_data.pop("ingredients")
-
-    # Convert ingredient data to SQLAlchemy Ingredient objects
-    ingredients = [Ingredient(**ingredient) for ingredient in ingredients_data]
+    ingredients_data = recipe_data.pop("ingredients", [])
 
     # Create Recipe object
     recipe = Recipe(**recipe_data)
-    recipe.ingredients = ingredients  # Add ingredients to the recipe
-
-    # Add and commit to the database
     db.add(recipe)
     db.commit()
     db.refresh(recipe)
+
+    for ingredient in ingredients_data:
+        new_ingredient = Ingredient(
+            name=ingredient["name"],
+            quantity=ingredient["quantity"],
+            unit=ingredient["unit"],
+            recipe_id=recipe.id
+        )
+        db.add(new_ingredient)
+
+    db.commit()
+    db.refresh(recipe)  
+
     return recipe
 
 # Function to get recipes by category or tag
