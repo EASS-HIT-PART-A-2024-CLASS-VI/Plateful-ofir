@@ -69,7 +69,7 @@ export default function EditRecipe() {
     const userId = localStorage.getItem("user_id");
 
     if (!userId) {
-      toast.error("Please login to edit this recipe.");
+      toast.error("❌ אנא התחבר כדי לערוך מתכון.");
       return;
     }
 
@@ -77,7 +77,7 @@ export default function EditRecipe() {
     Object.entries(recipe).forEach(([key, value]) => formData.append(key, value));
     formData.append("current_user_id", userId);
     formData.append("ingredients", JSON.stringify(ingredients)); // ✅ שליחת מצרכים כ-JSON
-    if (image) formData.append("image", image);
+    if (image) formData.append("image", image);  // ✅ שליחת תמונה אם קיימת
 
     try {
       const response = await fetch(`http://localhost:8000/recipes/${id}`, {
@@ -86,14 +86,17 @@ export default function EditRecipe() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Failed to update recipe");
+      if (!response.ok) throw new Error(data.detail || "❌ שגיאה בעדכון המתכון");
 
-      toast.success("Recipe updated successfully!");
+      console.log("✅ מתכון עודכן:", data);
+
+      toast.success("✅ מתכון עודכן בהצלחה!");
       navigate(`/recipes/${id}`);
     } catch (error) {
-      toast.error(error.message || "Failed to update recipe.");
+      console.error("❌ Error updating recipe:", error);
+      toast.error(error.message || "❌ שגיאה בלתי צפויה.");
     }
-  };
+};
 
   return (
     <div className="p-6 max-w-4xl mx-auto">

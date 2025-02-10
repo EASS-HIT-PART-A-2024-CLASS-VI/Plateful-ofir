@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query, Form
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query, Form, Security
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Union
-from datetime import datetime
+from datetime import datetime, timedelta
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from models.security import verify_password, create_access_token
+import jwt
 import json
 import shutil
 import os
@@ -18,7 +21,10 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from models.recipe_model import Comment
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,13 +38,25 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # זה ה-Frontend שלך
+    allow_origins=["http://localhost:5173"],  # ✅ מותר רק מה-Frontend
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # ✅ מאפשר כל סוגי הבקשות (GET, POST, OPTIONS וכו')
+    allow_headers=["*"],  # ✅ מאפשר כל סוגי ה-Headers
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+security = HTTPBearer()
+
+SECRET_KEY = "your_secret_key"
+ALGORITHM = "HS256"
+
+def create_access_token(user_id: int):
+    payload = {
+        "sub": str(user_id),
+        "exp": datetime.utcnow() + timedelta(hours=24)
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 # Pydantic models
 class NutritionalValues(BaseModel):
@@ -110,7 +128,8 @@ class SuggestRecipeRequest(BaseModel):
     ingredients: List[IngredientCreate]
 
 class RatingRequest(BaseModel):
-    rating: float
+    user_id: int
+    score: int
 
 class CommentRequest(BaseModel):
     user_id: int
@@ -132,7 +151,7 @@ async def create_recipe(
     tags: str = Form(...),
     creator_id: str = Form(...),
     ingredients: str = Form(...),  
-    image: Optional[UploadFile] = File(None),
+    image: Optional[UploadFile] = File(None),  # ✅ קבלת תמונה
     db: Session = Depends(get_db)
 ):
     try:
@@ -143,55 +162,51 @@ async def create_recipe(
 
     ingredients_list = json.loads(ingredients)
 
-    try:
-        print(f"🔄 Calculating nutritional info for ingredients: {ingredients_list}")
-        nutrition_values = calculate_nutritional_info(ingredients_list, servings)
-        print(f"✅ Computed Nutritional Info: {nutrition_values}")
+    # ✅ ברירת מחדל אם אין תמונה
+    image_url = "/static/default-recipe.jpg"
 
-        new_recipe = Recipe(
-            name=name,
-            preparation_steps=preparation_steps,
-            cooking_time=int(cooking_time),
-            servings=servings,
-            categories=categories,
-            tags=tags,
-            creator_id=creator_id
+    if image:
+        image_filename = f"{name.replace(' ', '_')}_{os.urandom(8).hex()}.{image.filename.split('.')[-1]}"  # ✅ שם ייחודי
+        image_path = os.path.join("static", image_filename)
+
+        with open(image_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        image_url = f"/static/{image_filename}"  # ✅ עדכון הכתובת לתמונה שהועלתה
+
+    # ✅ יצירת המתכון ושמירת נתוני התמונה
+    new_recipe = Recipe(
+        name=name,
+        preparation_steps=preparation_steps,
+        cooking_time=cooking_time,
+        servings=servings,
+        categories=categories,
+        tags=tags,
+        creator_id=creator_id,
+        image_url=image_url  # ✅ תמיד יש כתובת תמונה תקינה
+    )
+
+    db.add(new_recipe)
+    db.commit()
+    db.refresh(new_recipe)
+
+    # ✅ שמירת מרכיבים
+    for ingredient in ingredients_list:
+        new_ingredient = Ingredient(
+            name=ingredient["name"],
+            quantity=float(ingredient["quantity"]),
+            unit=ingredient["unit"],
+            recipe_id=new_recipe.id
         )
+        db.add(new_ingredient)
 
-        db.add(new_recipe)
-        db.commit()
-        db.refresh(new_recipe)
+    db.commit()
 
-        # ✅ שמירת מצרכים
-        for ingredient in ingredients_list:
-            new_ingredient = Ingredient(
-                name=ingredient["name"],
-                quantity=float(ingredient["quantity"]),
-                unit=ingredient["unit"],
-                recipe_id=new_recipe.id
-            )
-            db.add(new_ingredient)
-
-        # ✅ שמירת הנתונים התזונתיים כולל portion_size
-        nutritional_info = NutritionalInfo(
-            recipe_id=new_recipe.id,
-            portion_size=float(nutrition_values["portion_size"]),
-            calories=float(nutrition_values["calories"]),
-            protein=float(nutrition_values["protein"]),
-            carbs=float(nutrition_values["carbs"]),
-            fats=float(nutrition_values["fats"]),
-        )
-        db.add(nutritional_info)
-        db.commit()
-
-        print(f"✅ Successfully saved nutritional info to DB for recipe {new_recipe.id}")
-
-        return {"message": "Recipe created successfully", "recipe_id": new_recipe.id}
-
-    except Exception as e:
-        db.rollback()  
-        print(f"❌ Error creating recipe: {e}")
-        raise HTTPException(status_code=500, detail=f"Error creating recipe: {str(e)}")
+    return {
+        "message": "Recipe created successfully",
+        "recipe_id": new_recipe.id,
+        "image_url": new_recipe.image_url  # ✅ מחזיר URL תקין ל-Frontend
+    }
 
 @app.get("/recipes/")
 async def get_recipes(
@@ -249,6 +264,10 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
+    # ✅ וידוא שדירוג לא יחזיר None
+    rating = recipe.rating if recipe.rating is not None else 0.0
+    image_url = recipe.image_url if recipe.image_url else "/static/default-recipe.jpg"
+
     # ✅ שליפת הנתונים התזונתיים
     nutritional_info = db.query(NutritionalInfo).filter(NutritionalInfo.recipe_id == recipe_id).first()
     nutrition_data = {
@@ -258,8 +277,6 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
         "fats": nutritional_info.fats if nutritional_info else 0,
         "portion_size": nutritional_info.portion_size if nutritional_info else 100,
     }
-    
-    print(f"📊 Nutritional info retrieved for recipe {recipe_id}: {nutrition_data}")
 
     return {
         "id": recipe.id,
@@ -269,7 +286,8 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
         "servings": recipe.servings,
         "categories": recipe.categories,
         "tags": recipe.tags,
-        "image_url": recipe.image_url if recipe.image_url else "/static/default-recipe.jpg",
+        "image_url": image_url,        
+        "rating": rating,  # ✅ החזרת דירוג תקף
         "ingredients": [
             {
                 "id": ing.id,
@@ -286,76 +304,67 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
 async def update_recipe(
     recipe_id: int,
     name: str = Form(...),
-    ingredients: str = Form(...),
     preparation_steps: str = Form(...),
     cooking_time: int = Form(...),
     servings: int = Form(...),
     categories: str = Form(...),
     tags: str = Form(...),
-    current_user_id: int = Form(...),
-    image: Optional[UploadFile] = File(None),
+    ingredients: str = Form(...),
+    current_user_id: str = Form(...),
+    image: Optional[UploadFile] = File(None),  # ✅ קבלת תמונה אם נשלחה
     db: Session = Depends(get_db)
 ):
-    """ Update a recipe, including its ingredients and nutritional values """
-
-    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-    if not db_recipe:
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    if db_recipe.creator_id != current_user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this recipe")
+    if str(recipe.creator_id) != current_user_id:
+        raise HTTPException(status_code=403, detail="You do not have permission to edit this recipe")
+
+    # ✅ אם הועלתה תמונה חדשה, שמירתה ועדכון `image_url`
+    if image:
+        image_filename = f"{recipe_id}_{os.urandom(8).hex()}.{image.filename.split('.')[-1]}"
+        image_path = os.path.join("static", image_filename)
+
+        # ✅ שמירת התמונה החדשה
+        with open(image_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        # ❌ מחיקת התמונה הישנה אם היא לא תמונת ברירת מחדל
+        if recipe.image_url and recipe.image_url != "/static/default-recipe.jpg":
+            old_image_path = recipe.image_url.replace("/static/", "static/")
+            if os.path.exists(old_image_path):
+                os.remove(old_image_path)
+
+        # ✅ עדכון URL של התמונה
+        recipe.image_url = f"/static/{image_filename}"
 
     # ✅ עדכון נתוני המתכון
-    db_recipe.name = name
-    db_recipe.preparation_steps = preparation_steps
-    db_recipe.cooking_time = cooking_time
-    db_recipe.servings = servings
-    db_recipe.categories = categories
-    db_recipe.tags = tags
+    recipe.name = name
+    recipe.preparation_steps = preparation_steps
+    recipe.cooking_time = cooking_time
+    recipe.servings = servings
+    recipe.categories = categories
+    recipe.tags = tags
 
-    new_ingredients = json.loads(ingredients)
-
-    # ✅ מחיקת מרכיבים ישנים והוספת חדשים
-    db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
-    db.commit()
-
-    for ingredient in new_ingredients:
+    # ✅ עדכון מרכיבים
+    db.query(Ingredient).filter(Ingredient.recipe_id == recipe.id).delete()
+    ingredients_list = json.loads(ingredients)
+    for ingredient in ingredients_list:
         new_ingredient = Ingredient(
             name=ingredient["name"],
-            quantity=ingredient["quantity"],
+            quantity=float(ingredient["quantity"]),
             unit=ingredient["unit"],
-            recipe_id=recipe_id
+            recipe_id=recipe.id
         )
         db.add(new_ingredient)
 
     db.commit()
 
-    # 🔄 **חישוב מחדש של הנתונים התזונתיים**
-    nutrition_values = calculate_nutritional_info(new_ingredients, servings)
-    
-    # ✅ עדכון או יצירה מחדש של הנתונים התזונתיים
-    nutritional_info = db.query(NutritionalInfo).filter(NutritionalInfo.recipe_id == recipe_id).first()
-    if nutritional_info:
-        nutritional_info.portion_size = nutrition_values["portion_size"]
-        nutritional_info.calories = nutrition_values["calories"]
-        nutritional_info.protein = nutrition_values["protein"]
-        nutritional_info.carbs = nutrition_values["carbs"]
-        nutritional_info.fats = nutrition_values["fats"]
-    else:
-        db.add(NutritionalInfo(
-            recipe_id=recipe_id,
-            portion_size=nutrition_values["portion_size"],
-            calories=nutrition_values["calories"],
-            protein=nutrition_values["protein"],
-            carbs=nutrition_values["carbs"],
-            fats=nutrition_values["fats"]
-        ))
-
-    db.commit()
-
-    print(f"✅ Updated Nutritional Info for Recipe {recipe_id}: {nutrition_values}")
-
-    return {"message": "Recipe updated successfully"}
+    return {
+        "message": "Recipe updated successfully",
+        "image_url": recipe.image_url  # ✅ מחזיר את ה-URL המעודכן של התמונה
+    }
 
 
 @app.get("/recipes/{recipe_id}/scale")
@@ -431,40 +440,57 @@ async def start_timer(recipe_id: int, step_number: int, db: Session = Depends(ge
     # For now, we'll just return the duration
     return {"duration": timer.duration, "label": timer.label}
 
-@app.post("/recipes/{recipe_id}/rate")
+@app.post("/recipes/{recipe_id}/rate/")
 async def rate_recipe(
-    recipe_id: int,
-    rating_data: RatingRequest,  # 👈 מקבלים את הבקשה כאובייקט Pydantic
+    recipe_id: int, 
+    rating_data: RatingRequest, 
     db: Session = Depends(get_db)
 ):
-    rating = rating_data.rating  # 👈 שולפים את הדירוג מתוך הבקשה
-
-    if not 0 <= rating <= 5:
-        raise HTTPException(status_code=400, detail="Rating must be between 0 and 5")
+    if rating_data.score < 1 or rating_data.score > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
 
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    # חישוב ממוצע הדירוגים
-    total_rating = recipe.rating * recipe.rating_count
-    recipe.rating_count += 1
-    recipe.rating = (total_rating + rating) / recipe.rating_count
+    # ✅ בדיקה אם המשתמש כבר דירג
+    existing_rating = db.query(Rating).filter(
+        Rating.recipe_id == recipe_id, Rating.user_id == rating_data.user_id
+    ).first()
+
+    if existing_rating:
+        existing_rating.score = rating_data.score  # ✅ עדכון דירוג קיים
+    else:
+        new_rating = Rating(recipe_id=recipe_id, user_id=rating_data.user_id, score=rating_data.score)
+        db.add(new_rating)
 
     db.commit()
-    return {"message": "Rating updated successfully", "new_rating": recipe.rating, "total_ratings": recipe.rating_count}
-    
+
+    # ✅ חישוב מחדש של הדירוג הממוצע
+    all_ratings = db.query(Rating).filter(Rating.recipe_id == recipe_id).all()
+    avg_rating = sum(r.score for r in all_ratings) / len(all_ratings)
+
+    recipe.rating = avg_rating
+    recipe.rating_count = len(all_ratings)
+    db.commit()
+
+    return {"message": "Rating added successfully", "average_rating": avg_rating}
+
+ 
 setup_ai_routes(app)
 
 @app.post("/recipes/{recipe_id}/comment")
 async def add_comment(
     recipe_id: int,
-    comment_data: CommentRequest,
+    comment_data: CommentRequest,  # ✅ FastAPI יצפה ל-JSON בפורמט הנכון
     db: Session = Depends(get_db)
 ):
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
+
+    if not comment_data.content.strip():
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
 
     comment = Comment(
         recipe_id=recipe_id,
@@ -491,7 +517,7 @@ async def get_comments(recipe_id: int, db: Session = Depends(get_db)):
     ]
 
 # User endpoints
-@app.post("/register/", include_in_schema=True)
+@app.post("/register", include_in_schema=True)  # ✅ אין `/` בסוף הנתיב
 async def register_user(user: UserRegister, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
@@ -511,17 +537,18 @@ async def register_user(user: UserRegister, db: Session = Depends(get_db)):
 
     return {"message": "User registered successfully"}
 
+@app.post("/login")
+async def login_user(user_data: dict, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_data["email"]).first()
 
-@app.post("/login/")
-async def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user or not verify_password(user_data["password"], user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not pwd_context.verify(user.password, db_user.password_hash):  
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return {
+        "token": create_access_token(user.id),
+        "user": {"id": user.id, "email": user.email}
+    }
 
-    return {"message": "Login successful", "user_id": db_user.id}
 
 @app.get("/users/")
 async def get_users(db: Session = Depends(get_db)):
@@ -550,6 +577,41 @@ async def get_user(user_id: int, db: Session = Depends(get_db)):
         "dietary_preferences": user.dietary_preferences
     }
 
+@app.get("/users/me")
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer(auto_error=False)), 
+    db: Session = Depends(get_db)
+):
+    if not credentials or not credentials.credentials:
+        print("❌ No Authorization Header received!")
+        raise HTTPException(status_code=422, detail="Missing Authorization Header")
+
+    token = credentials.credentials
+    print(f"🔹 Received Token: {token}")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+
+        if not user_id:
+            print("❌ No user ID in token!")
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        user = db.query(User).filter(User.id == int(user_id)).first()
+
+        if not user:
+            print("❌ User not found")
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        return {"id": user.id, "username": user.username, "email": user.email}
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    
 @app.get("/users/{user_id}/recipes")
 async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
     try:

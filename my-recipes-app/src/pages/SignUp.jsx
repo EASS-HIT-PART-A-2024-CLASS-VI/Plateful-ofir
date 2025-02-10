@@ -17,25 +17,26 @@ export default function SignUp() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     try {
       const response = await fetch("http://localhost:8000/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
+        mode: "cors",  // ✅ וודא שהבקשה מתבצעת עם CORS
       });
-
+  
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Registration failed");
-
+  
       toast.success("Registration successful! Please log in.");
       navigate("/login");
-
+  
     } catch (error) {
       console.error("❌ Error registering:", error);
       toast.error("❌ Failed to register. Please try again.");
     }
-  };
+  };  
 
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">

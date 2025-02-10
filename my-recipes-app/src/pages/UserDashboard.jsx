@@ -1,80 +1,119 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // ✅ הוספת useNavigate
 import { toast } from "react-toastify";
-import CreateRecipe from "./CreateRecipe"; // ✅ טוען את יצירת המתכון כקומפוננטה נפרדת
+import { useAuth } from "../context/UserContext";
+import CreateRecipe from "./CreateRecipe";
 
 export default function UserDashboard() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // ✅ הגדרת navigate
+  const { user } = useAuth();
   const [recipes, setRecipes] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUserRecipes();
-    fetchNotifications();
-  }, []);
+    if (user) {
+      fetchUserRecipes();
+      fetchNotifications();
+    }
+  }, [user]);
 
   const fetchUserRecipes = async () => {
-    const userId = localStorage.getItem("user_id");
-    if (!userId) {
-      toast.error("Please login to view your recipes");
-      navigate("/login");
-      return;
-    }
-
     try {
-      const response = await fetch(`http://localhost:8000/users/${userId}/recipes`);
+      const response = await fetch(`http://localhost:8000/users/${user.id}/recipes`, {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        }
+      });
+
       if (!response.ok) throw new Error("Failed to fetch recipes");
+
       const data = await response.json();
       setRecipes(data);
     } catch (error) {
-      toast.error("Failed to load recipes");
+      toast.error("שגיאה בטעינת המתכונים");
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchNotifications = async () => {
-    const userId = localStorage.getItem("user_id");
     try {
-      const response = await fetch(`http://localhost:8000/users/${userId}/notifications`);
+      const response = await fetch(`http://localhost:8000/users/${user.id}/notifications`, {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        }
+      });
+
       if (!response.ok) throw new Error("Failed to fetch notifications");
+
       const data = await response.json();
       setNotifications(data);
     } catch (error) {
-      toast.error("Failed to load notifications");
+      toast.error("שגיאה בטעינת ההתראות");
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-2xl text-blue-500">טוען...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">Your Dashboard</h2>
+      <h2 className="text-3xl font-bold mb-6">שלום, {user?.username}!</h2>
 
-      {/* Notifications */}
-      <div className="mb-6">
-        <h3 className="text-2xl font-bold">Notifications</h3>
-        {notifications.length > 0 ? (
-          notifications.map((notif, index) => (
-            <p key={index} className="text-gray-600">{notif.message}</p>
-          ))
-        ) : (
-          <p className="text-gray-500">No new notifications</p>
-        )}
+      {/* Notifications Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 className="text-2xl font-bold mb-4">📢 התראות</h3>
+        <div className="space-y-2">
+          {notifications.length > 0 ? (
+            notifications.map((notif, index) => (
+              <div key={index} className="p-3 bg-gray-50 rounded">
+                {notif.message}
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500">אין התראות חדשות</p>
+          )}
+        </div>
       </div>
 
-      {/* User Recipes */}
-      <h3 className="text-2xl font-bold mb-4">Your Recipes</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {recipes.map((recipe) => (
-          <div key={recipe.id} className="border rounded p-4">
-            <h4 className="font-bold">{recipe.name}</h4>
-            <p className="text-gray-600">Categories: {recipe.categories}</p>
-            <p className="text-gray-600">Cooking Time: {recipe.cooking_time} min</p>
-            <button onClick={() => navigate(`/recipes/${recipe.id}`)} className="text-blue-500">View</button>
-            <button onClick={() => navigate(`/recipes/edit/${recipe.id}`)} className="text-green-500 ml-2">Edit</button>
-          </div>
-        ))}
+      {/* Recipes Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 className="text-2xl font-bold mb-4">🍽️ המתכונים שלך</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {recipes.map((recipe) => (
+            <div key={recipe.id} className="border rounded p-4 hover:shadow-lg transition duration-200">
+              <h4 className="font-bold text-lg">{recipe.name}</h4>
+              <p className="text-gray-600">📂 קטגוריות: {recipe.categories}</p>
+              <p className="text-gray-600">⏳ זמן הכנה: {recipe.cooking_time} דקות</p>
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => navigate(`/recipes/${recipe.id}`)} // ✅ שימוש ב- navigate
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+                >
+                  צפייה
+                </button>
+                <button
+                  onClick={() => navigate(`/recipes/edit/${recipe.id}`)} // ✅ שימוש ב- navigate
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+                >
+                  עריכה
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Create Recipe */}
-      <CreateRecipe fetchUserRecipes={fetchUserRecipes} />
+      {/* Create Recipe Section */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <CreateRecipe fetchUserRecipes={fetchUserRecipes} />
+      </div>
     </div>
   );
 }

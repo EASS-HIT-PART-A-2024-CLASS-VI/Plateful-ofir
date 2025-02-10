@@ -6,163 +6,141 @@ import "react-toastify/dist/ReactToastify.css";
 export default function RecipeDetails() {
   const { id } = useParams();
   const [recipe, setRecipe] = useState(null);
-  const [shareUserId, setShareUserId] = useState("");
+  const [newComment, setNewComment] = useState("");
+  const [comments, setComments] = useState([]);
+  const [rating, setRating] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const userId = localStorage.getItem("user_id");
 
   useEffect(() => {
-    fetch(`http://localhost:8000/recipes/${id}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("📥 Received Recipe Data:", data);
-        setRecipe(data);
-        setLoading(false); // וודא שהטעינה מסתיימת
-      })
-      .catch((error) => {
-        console.error("❌ Error fetching recipe:", error);
-        setError(error.message);
-        setLoading(false);
-      });
+    if (id) {
+      fetchRecipe();
+      fetchComments();
+    }
   }, [id]);
-  
-  
 
-  if (loading) return <p className="text-center mt-10 text-blue-500">Loading recipe...</p>;
-  if (error) return <p className="text-center text-red-500 mt-10">Error: {error}</p>;
-  if (!recipe) return <p className="text-center text-gray-500 mt-10">Recipe not found.</p>; // ✅ הגנה על `null`
-
-  // בניית URL לתמונה, תוך שימוש בתמונה דיפולטית אם אין `image_url`
-  const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return "http://localhost:8000/static/default-recipe.jpg";
-    return `http://localhost:8000${imageUrl}`;
+  const fetchRecipe = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/recipes/${id}`);
+      if (!response.ok) throw new Error(`שגיאה בקבלת המתכון. סטטוס: ${response.status}`);
+      const data = await response.json();
+      setRecipe(data);
+      setRating(data.rating || 0.0);
+      setLoading(false);
+    } catch (error) {
+      console.error("❌ שגיאה בשליפת מתכון:", error);
+      setError(error.message);
+      setLoading(false);
+    }
   };
 
+  const fetchComments = async () => {
+    try {
+      if (!id) return;
+      const response = await fetch(`http://localhost:8000/recipes/${id}/comments`);
+      if (!response.ok) throw new Error("שגיאה בשליפת תגובות");
+      const data = await response.json();
+      setComments(data);
+    } catch (error) {
+      console.error("❌ שגיאה בשליפת תגובות:", error);
+    }
+  };
+
+  const handleAddComment = async () => {
+    try {
+      if (!userId) return alert("יש להתחבר כדי להגיב!");
+      if (!id) return;
+
+      const response = await fetch(`http://localhost:8000/recipes/${id}/comment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          content: newComment
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "שגיאה בהוספת תגובה");
+      }
+
+      setNewComment("");
+      fetchComments();
+      toast.success("✅ תגובה נוספה!");
+    } catch (error) {
+      console.error("❌ שגיאה בהוספת תגובה:", error);
+      toast.error("❌ לא ניתן להוסיף תגובה.");
+    }
+  };
+
+  if (loading) return <p className="text-center mt-10 text-blue-500">טוען מתכון...</p>;
+  if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;
+  if (!recipe) return <p className="text-center text-gray-500 mt-10">מתכון לא נמצא.</p>;
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* תמונת המתכון */}
-      <div className="w-full flex justify-center mb-6">
-        <img
-          src={getImageUrl(recipe.image_url)}
-          alt={recipe.name}
-          className="rounded-lg shadow-md max-h-64 object-cover"
-          onError={(e) => {
-            console.log("🚨 Image failed to load:", e.target.src);
-            e.target.src = "http://localhost:8000/static/default-recipe.jpg"; // ✅ גיבוי אם טעינת התמונה נכשלת
-          }}
-        />
+    <div className="max-w-6xl mx-auto p-8">
+      <div className="flex flex-col md:flex-row items-start gap-8">
+        {/* תמונת מתכון */}
+        <div className="w-full md:w-1/2">
+          <img src={`http://localhost:8000${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
+        </div>
+
+        {/* פרטי מתכון */}
+        <div className="w-full md:w-1/2">
+          <h1 className="text-4xl font-bold text-gray-800">{recipe.name}</h1>
+          <p className="text-lg text-gray-500 mt-2">{recipe.categories}</p>
+          <p className="text-md text-gray-600 mt-1">{recipe.tags}</p>
+
+          <div className="flex items-center gap-4 mt-4">
+            <p className="text-lg">⏳ {recipe.cooking_time} דקות</p>
+            <p className="text-lg">🍽 {recipe.servings} מנות</p>
+          </div>
+        </div>
       </div>
 
-      <h2 className="text-3xl font-bold text-center">{recipe.name}</h2>
-      <p className="text-lg text-gray-700 mt-2">⏳ Cooking Time: {recipe.cooking_time} min</p>
-      <p className="text-lg text-gray-700">📂 Category: {recipe.categories}</p>
-      <p className="text-lg text-gray-700">⭐ Rating: {recipe.rating} ⭐️</p>
-
-      {/* 🛒 הצגת רשימת מצרכים */}
-      {recipe.ingredients && recipe.ingredients.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-xl font-bold">🛒 Ingredients</h3>
-          <ul className="list-disc ml-6">
-            {recipe.ingredients.map((ing, index) => (
-              <li key={index}>
-                {ing.quantity} {ing.unit} {ing.name}
-              </li>
+      {/* מרכיבים ושלבי הכנה */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+        <div>
+          <h2 className="text-2xl font-bold">🥦 מרכיבים</h2>
+          <ul className="mt-4 list-disc pl-5">
+            {recipe.ingredients.map((ingredient) => (
+              <li key={ingredient.id} className="text-lg">{ingredient.name} - {ingredient.quantity} {ingredient.unit}</li>
             ))}
           </ul>
         </div>
-      )}
 
-      {/* 📊 הצגת מידע תזונתי */}
-      {recipe.nutritional_info && (
-        <div className="mt-6 p-4 bg-gray-100 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-800">📝 Nutritional Information</h3>
-            <p className="text-gray-700"><strong>🍽 Portion Size:</strong> {recipe.nutritional_info.portion_size || "N/A"} g/ml</p>
-            <p className="text-gray-700 mt-2"><strong>🔥 Calories:</strong> {recipe.nutritional_info.calories} kcal</p>
-            <p className="text-gray-700"><strong>💪 Protein:</strong> {recipe.nutritional_info.protein} g</p>
-            <p className="text-gray-700"><strong>🍞 Carbs:</strong> {recipe.nutritional_info.carbs} g</p>
-            <p className="text-gray-700"><strong>🥑 Fats:</strong> {recipe.nutritional_info.fats} g</p>
+        <div>
+          <h2 className="text-2xl font-bold">📜 שלבי הכנה</h2>
+          <p className="mt-4 text-lg">{recipe.preparation_steps}</p>
         </div>
-    )}
+      </div>
 
-      {/* 📜 הצגת שלבי הכנה */}
-      {recipe.preparation_steps && (
-        <div className="mt-6 p-4 bg-white rounded-lg shadow-md">
-          <h3 className="text-xl font-bold text-gray-800">📜 Preparation Steps</h3>
-          <p className="text-gray-700 whitespace-pre-line">{recipe.preparation_steps}</p>
-        </div>
-      )}
-      {/* ⏳ טיימרים לכל שלב */}
-        {recipe.timers && recipe.timers.length > 0 && (
-        <div className="mt-6 p-4 bg-gray-100 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-800">⏳ Cooking Timers</h3>
-            <ul className="list-disc ml-6">
-            {recipe.timers.map((timer, index) => (
-                <li key={index} className="text-gray-700">
-                <strong>Step {timer.step_number}:</strong> {timer.duration} minutes ({timer.label})
-                </li>
-            ))}
-            </ul>
-        </div>
+      {/* תגובות */}
+      <div className="mt-8 bg-gray-100 p-6 rounded-lg">
+        <h2 className="text-2xl font-bold mb-4">💬 תגובות</h2>
+        {comments.length > 0 ? (
+          comments.map((comment) => (
+            <div key={comment.id} className="border-b p-2">
+              <strong>👤 משתמש {comment.user_id}:</strong>
+              <p>{comment.content || "⚠️ שגיאה בהצגת תגובה"}</p>
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-500">אין תגובות</p>
         )}
 
-        {/* 📝 הצגת תגובות */}
-        {recipe.comments && recipe.comments.length > 0 && (
-        <div className="mt-6 p-4 bg-white rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-800">📝 Comments</h3>
-            <ul>
-            {recipe.comments.map((comment, index) => (
-                <li key={index} className="border-b p-2">
-                <strong>{comment.user_name}:</strong> ⭐ {comment.rating} <br />
-                {comment.content}
-                </li>
-            ))}
-            </ul>
-        </div>
-        )}
-
-      {/* 📤 שיתוף מתכון */}
-      <div className="flex items-center gap-4 mt-6">
-        <input
-          type="text"
-          className="border p-2 rounded"
-          placeholder="Enter user ID"
-          value={shareUserId}
-          onChange={(e) => setShareUserId(e.target.value)}
-        />
-        <button
-          onClick={() => {
-            if (!shareUserId) {
-              toast.warn("⚠️ Please enter a user ID to share with!");
-              return;
-            }
-
-            fetch(`http://localhost:8000/recipes/${id}/share/${shareUserId}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-            })
-              .then((response) => {
-                if (!response.ok) {
-                  throw new Error("❌ Recipe already shared with this user or invalid user ID");
-                }
-                return response.json();
-              })
-              .then((data) => {
-                console.log("✅ Recipe shared:", data);
-                toast.success(`🎉 Recipe shared successfully with user ${shareUserId}!`);
-                setShareUserId(""); // ✅ איפוס השדה לאחר השיתוף
-              })
-              .catch((error) => {
-                console.error("❌ Error sharing recipe:", error);
-                toast.error("❌ Failed to share recipe. Please try again.");
-              });
-          }}
-          className="bg-green-500 text-white px-4 py-2 rounded"
-        >
-          📤 Share
+        <textarea
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="כתוב תגובה..."
+          className="border p-2 w-full mt-4"
+        ></textarea>
+        <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 py-2 rounded mt-2">
+          💬 הוסף תגובה
         </button>
       </div>
     </div>

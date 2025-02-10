@@ -91,7 +91,15 @@ export default function Recipes() {
   {filteredRecipes.length > 0 ? (
     filteredRecipes.map((recipe) => (
       <li key={recipe.id} className="border p-4 rounded-lg shadow-lg bg-white">
-        <img src={recipe.image_url || "http://localhost:8000/static/default-recipe.jpg"} alt={recipe.name} className="w-full h-40 object-cover rounded-md mb-2" />
+        <img
+        src={`http://localhost:8000${recipe.image_url}`}
+        alt={recipe.name}
+        className="w-full h-32 object-cover rounded-t-lg"
+        onError={(e) => {
+            e.target.src = "http://localhost:8000/static/default-recipe.jpg"; // תמונת ברירת מחדל אם התמונה לא נטענת
+        }}
+        />
+
         <h3 className="text-xl font-semibold text-gray-800">{recipe.name}</h3>
         <p className="text-sm text-gray-500">Cooking Time: {recipe.cooking_time} min</p>
         <p className="text-sm text-gray-500">Category: {recipe.categories}</p>
@@ -107,4 +115,4 @@ export default function Recipes() {
 </ul>
     </div>
   );
-}
+} 
