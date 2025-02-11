@@ -5,7 +5,8 @@ from jose import JWTError, jwt
 # 🔑 הגדרת מפתח סודי להצפנה (עדיף לשמור בקובץ `.env`)
 SECRET_KEY = "your_secret_key_here"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_DAYS = 7
+ACCESS_TOKEN_EXPIRE_MINUTES = ACCESS_TOKEN_EXPIRE_DAYS * 24 * 60
 
 # יצירת הקשר להצפנת סיסמאות
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -28,7 +29,10 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 def decode_access_token(token: str):
     """פענוח ואימות טוקן גישה"""
     try:
+        print(f"🔹 Trying to decode token: {token}")  # בדיקת הנתון
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"✅ Token Decoded Successfully: {payload}")
         return payload
-    except JWTError:
+    except JWTError as e:
+        print(f"❌ JWT Decoding Error: {str(e)}")
         return None

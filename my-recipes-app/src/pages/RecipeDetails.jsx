@@ -8,6 +8,7 @@ export default function RecipeDetails() {
   const [recipe, setRecipe] = useState(null);
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState([]);
+  const [timers, setTimers] = useState([]);
   const [rating, setRating] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,6 +69,30 @@ export default function RecipeDetails() {
         throw new Error(errorData.detail || "שגיאה בהוספת תגובה");
       }
 
+        // 🔥 פונקציה להתחלת טיימר
+    const startTimer = (stepNumber, duration) => {
+        if (timers[stepNumber]) return; // אם כבר רץ טיימר, לא מפעילים מחדש
+        let remainingTime = duration;
+
+        const interval = setInterval(() => {
+        setTimers((prev) => ({
+            ...prev,
+            [stepNumber]: remainingTime,
+        }));
+
+        if (remainingTime <= 0) {
+            clearInterval(interval);
+            toast.success(`🚀 טיימר של שלב ${stepNumber} הסתיים!`);
+        }
+        remainingTime--;
+        }, 1000);
+
+        setTimers((prev) => ({
+        ...prev,
+        [stepNumber]: duration,
+        }));
+    };
+
       setNewComment("");
       fetchComments();
       toast.success("✅ תגובה נוספה!");
@@ -115,7 +140,25 @@ export default function RecipeDetails() {
 
         <div>
           <h2 className="text-2xl font-bold">📜 שלבי הכנה</h2>
-          <p className="mt-4 text-lg">{recipe.preparation_steps}</p>
+          <ul className="mt-4 space-y-4">
+            {recipe.preparation_steps.split("\n").map((step, index) => {
+              const stepNumber = index + 1;
+              const timer = timers.find(t => t.step_number === stepNumber);
+              return (
+                <li key={index} className="text-lg flex items-center gap-4">
+                  {step}
+                  {timer && (
+                    <button
+                      onClick={() => startTimer(stepNumber, timer.duration)}
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                    >
+                      {activeTimers[stepNumber] ? `⏳ ${activeTimers[stepNumber]}s` : `⏳ הפעל טיימר (${timer.duration}s)`}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
 
@@ -139,7 +182,7 @@ export default function RecipeDetails() {
           placeholder="כתוב תגובה..."
           className="border p-2 w-full mt-4"
         ></textarea>
-        <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 py-2 rounded mt-2">
+        <button onClick={() => alert("הוספת תגובה אינה ממומשת עדיין!")} className="bg-blue-500 text-white px-4 py-2 rounded mt-2">
           💬 הוסף תגובה
         </button>
       </div>

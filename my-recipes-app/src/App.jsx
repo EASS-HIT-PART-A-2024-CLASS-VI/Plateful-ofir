@@ -1,4 +1,4 @@
-import React from "react";  // ✅ הוספת הייבוא של React
+import React, { useEffect, useState } from "react";  // 🟢 הוספת useEffect
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify"; 
 import "react-toastify/dist/ReactToastify.css"; 
@@ -14,6 +14,16 @@ import UserDashboard from "./pages/UserDashboard";
 import EditRecipe from "./pages/EditRecipe"; 
 
 export default function App() {
+  useEffect(() => {
+    fetch("http://localhost:8000/")
+      .then((res) => {
+        console.log("🔎 Response Status:", res.status); // ✅ מדפיס את הסטטוס
+        return res.json();
+      })
+      .then((data) => console.log("✅ Backend Response:", data))
+      .catch((error) => console.error("❌ Backend connection failed:", error));
+}, []);
+
   return (
     <UserProvider>
       <Router>

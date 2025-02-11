@@ -1,43 +1,64 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import { createContext, useState, useEffect, useContext } from "react";
 
 export const UserContext = createContext();
 
-export const useAuth = () => {
-  return useContext(UserContext);
-};
+export const useAuth = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      fetchUserData(token);
-    }
-  }, []);
+    useEffect(() => {
+        const token = localStorage.getItem("authToken");
 
-  const fetchUserData = async (token) => {
-    try {
-      const response = await fetch("http://localhost:8000/users/me", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        if (!token) {
+            console.warn("⚠️ No token found - Skipping fetch.");
+            setLoading(false);
+            return;
+        }
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch user data");
-      }
+        console.log("🔹 Token found:", token);
 
-      const data = await response.json();
-      setUser(data);
-    } catch (error) {
-      console.error("❌ Error fetching user:", error);
-      localStorage.removeItem("authToken");
-    }
-  };
+        fetchUserData(token);
+    }, []); // ✅ ייטען רק פעם אחת בעת עליית הדף
 
-  return (
-    <UserContext.Provider value={{ user, setUser }}>
-      {children}
-    </UserContext.Provider>
-  );
+    const fetchUserData = async (token) => {
+        if (!token) {
+            console.warn("⚠️ No token found - Skipping request.");
+            return;
+        }
+    
+        console.log("🔹 Sending token:", token);
+    
+        try {
+            const response = await fetch("http://localhost:8000/users/me", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+            });
+    
+            const responseText = await response.text();
+            console.log("🔍 Backend response:", responseText); // ✅ לראות מה ה-Backend מחזיר בדיוק
+    
+            if (!response.ok) {
+                console.error("❌ Backend error response:", response.status, responseText);
+                return;  // ❌ אין למחוק את הטוקן אם יש בעיה זמנית
+            }
+    
+            const data = JSON.parse(responseText);
+            console.log("✅ User data received:", data);
+            setUser(data);
+        } catch (error) {
+            console.error("❌ Error fetching user:", error);
+        }
+    };
+    
+
+    return (
+        <UserContext.Provider value={{ user, setUser, loading }}>
+            {children}
+        </UserContext.Provider>
+    );
 };

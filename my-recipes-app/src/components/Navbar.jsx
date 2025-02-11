@@ -8,17 +8,24 @@ export default function Navbar() {
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
+
     if (!token) {
-      setUser(null); // ✅ אם אין טוקן, המשתמש לא מחובר
+      console.warn("⚠️ No token found - User is logged out.");
+      setUser(null);
+      return;
     }
-  }, [setUser]);
+
+    console.log("🔹 Token exists:", token);
+  }, []); // ✅ useEffect רץ רק פעם אחת בעת טעינת הקומפוננטה
 
   const handleLogout = () => {
-    localStorage.removeItem("authToken"); // ✅ מחיקת טוקן
+    console.log("🔴 Logging out - Removing token");
+    localStorage.removeItem("authToken"); 
     localStorage.removeItem("user_id");
-    setUser(null); // ✅ איפוס ה-UserContext
-    navigate("/"); // ✅ חזרה לדף הבית
-  };
+    setUser(null);
+    navigate("/");
+};
+
 
   return (
     <nav className="fixed top-0 w-full bg-white bg-opacity-90 backdrop-blur-md py-4 px-8 flex items-center justify-between shadow-md z-50">

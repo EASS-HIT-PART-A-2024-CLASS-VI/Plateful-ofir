@@ -1,8 +1,10 @@
+from urllib.request import Request
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query, Form, Security
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Union
 from datetime import datetime, timedelta
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials,OAuth2PasswordBearer
+
 from models.security import verify_password, create_access_token
 import jwt
 import json
@@ -22,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from models.recipe_model import Comment
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from services.ai_service import calculate_nutritional_info
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 
@@ -46,7 +49,7 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-security = HTTPBearer()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
@@ -139,7 +142,10 @@ class CommentRequest(BaseModel):
 STATIC_DIR = "static"
 os.makedirs(STATIC_DIR, exist_ok=True)  # ודא שהתיקייה קיימת
 
-from services.ai_service import calculate_nutritional_info
+
+@app.get("/")
+async def root():
+    return {"message": "✅ Backend is running!"}
 
 @app.post("/recipes/")
 async def create_recipe(
@@ -267,6 +273,8 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
     # ✅ וידוא שדירוג לא יחזיר None
     rating = recipe.rating if recipe.rating is not None else 0.0
     image_url = recipe.image_url if recipe.image_url else "/static/default-recipe.jpg"
+    timers = db.query(CookingTimer).filter(CookingTimer.recipe_id == recipe_id).all()
+
 
     # ✅ שליפת הנתונים התזונתיים
     nutritional_info = db.query(NutritionalInfo).filter(NutritionalInfo.recipe_id == recipe_id).first()
@@ -297,7 +305,12 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
             }
             for ing in db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).all()
         ],
-        "nutritional_info": nutrition_data  
+        "nutritional_info": nutrition_data,  
+        "timers": [
+            {"step_number": timer.step_number, "duration": timer.duration, "label": timer.label}
+            for timer in timers
+        ] if timers else []
+
     }
 
 @app.put("/recipes/{recipe_id}")
@@ -426,19 +439,19 @@ async def get_shopping_list(
     
     return {"recipe_name": recipe.name, "shopping_list": items}
 
-@app.post("/recipes/{recipe_id}/timer")
-async def start_timer(recipe_id: int, step_number: int, db: Session = Depends(get_db)):
-    timer = db.query(CookingTimer).filter(
-        CookingTimer.recipe_id == recipe_id,
-        CookingTimer.step_number == step_number
-    ).first()
-    
-    if not timer:
-        raise HTTPException(status_code=404, detail="Timer not found")
-    
-    # Here you would integrate with your timer service
-    # For now, we'll just return the duration
-    return {"duration": timer.duration, "label": timer.label}
+@app.post("/recipes/{recipe_id}/timers")
+async def add_timer(recipe_id: int, step_number: int = Form(...), duration: int = Form(...), label: str = Form(...), db: Session = Depends(get_db)):
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    new_timer = CookingTimer(recipe_id=recipe_id, step_number=step_number, duration=duration, label=label)
+    db.add(new_timer)
+    db.commit()  # ✅ ודאי שמבוצע commit!
+    db.refresh(new_timer)
+
+    return {"message": "Timer added successfully", "timer": new_timer}
+
 
 @app.post("/recipes/{recipe_id}/rate/")
 async def rate_recipe(
@@ -565,21 +578,10 @@ async def get_users(db: Session = Depends(get_db)):
         for user in users
     ]
 
-@app.get("/users/{user_id}")
-async def get_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "dietary_preferences": user.dietary_preferences
-    }
 
-@app.get("/users/me")
+@app.get("/users/me", response_model=None)  # ✅ אין צורך להגדיר Response Model
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Security(HTTPBearer(auto_error=False)), 
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)), 
     db: Session = Depends(get_db)
 ):
     if not credentials or not credentials.credentials:
@@ -587,30 +589,32 @@ async def get_current_user(
         raise HTTPException(status_code=422, detail="Missing Authorization Header")
 
     token = credentials.credentials
-    print(f"🔹 Received Token: {token}")
+    print(f"🔹 Received Token: {token}")  # ✅ לוודא שהטוקן מתקבל
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
+        print(f"✅ Decoded Token: {payload}")  # ✅ לוודא שהטוקן תקף
 
+        user_id = payload.get("sub")
         if not user_id:
             print("❌ No user ID in token!")
             raise HTTPException(status_code=401, detail="Invalid token")
 
         user = db.query(User).filter(User.id == int(user_id)).first()
-
         if not user:
             print("❌ User not found")
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        return {"id": user.id, "username": user.username, "email": user.email}
+        return {"id": user.id, "username": user.username, "email": user.email}  # ✅ JSON תקין
 
     except jwt.ExpiredSignatureError:
+        print("❌ Token expired")
         raise HTTPException(status_code=401, detail="Token expired")
 
-    except jwt.InvalidTokenError:
+    except jwt.JWTError:
+        print("❌ Invalid token format")
         raise HTTPException(status_code=401, detail="Invalid token")
-
+    
     
 @app.get("/users/{user_id}/recipes")
 async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
