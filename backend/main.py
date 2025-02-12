@@ -156,8 +156,8 @@ async def create_recipe(
     categories: str = Form(...),
     tags: str = Form(...),
     creator_id: str = Form(...),
-    ingredients: str = Form(...),  
-    image: Optional[UploadFile] = File(None),  # ✅ קבלת תמונה
+    ingredients: str = Form(...),
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     try:
@@ -168,19 +168,16 @@ async def create_recipe(
 
     ingredients_list = json.loads(ingredients)
 
-    # ✅ ברירת מחדל אם אין תמונה
+    # ✅ שמירת תמונה עם נתיב ברירת מחדל
     image_url = "/static/default-recipe.jpg"
-
     if image:
-        image_filename = f"{name.replace(' ', '_')}_{os.urandom(8).hex()}.{image.filename.split('.')[-1]}"  # ✅ שם ייחודי
+        image_filename = f"{name.replace(' ', '_')}_{os.urandom(8).hex()}.{image.filename.split('.')[-1]}"
         image_path = os.path.join("static", image_filename)
-
         with open(image_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
+        image_url = f"/static/{image_filename}"
 
-        image_url = f"/static/{image_filename}"  # ✅ עדכון הכתובת לתמונה שהועלתה
-
-    # ✅ יצירת המתכון ושמירת נתוני התמונה
+    # ✅ יצירת המתכון ושמירתו ב-DB
     new_recipe = Recipe(
         name=name,
         preparation_steps=preparation_steps,
@@ -189,9 +186,8 @@ async def create_recipe(
         categories=categories,
         tags=tags,
         creator_id=creator_id,
-        image_url=image_url  # ✅ תמיד יש כתובת תמונה תקינה
+        image_url=image_url
     )
-
     db.add(new_recipe)
     db.commit()
     db.refresh(new_recipe)
@@ -208,11 +204,31 @@ async def create_recipe(
 
     db.commit()
 
+        # ✅ **חישוב ערכים תזונתיים ושמירתם במסד הנתונים**
+    print(f"📢 Calling calculate_nutritional_info with ingredients: {ingredients_list}")
+    nutrition_data = calculate_nutritional_info(ingredients_list, servings)
+    print(f"📢 Nutrition data received: {nutrition_data}")
+
+
+    if nutrition_data:
+        new_nutritional_info = NutritionalInfo(
+            recipe_id=new_recipe.id,
+            calories=nutrition_data["calories"],
+            protein=nutrition_data["protein"],
+            carbs=nutrition_data["carbs"],
+            fats=nutrition_data["fats"],
+            portion_size=nutrition_data["portion_size"]
+        )
+        db.add(new_nutritional_info)
+        db.commit()
+        db.refresh(new_nutritional_info)
+
     return {
         "message": "Recipe created successfully",
         "recipe_id": new_recipe.id,
-        "image_url": new_recipe.image_url  # ✅ מחזיר URL תקין ל-Frontend
+        "image_url": new_recipe.image_url
     }
+
 
 @app.get("/recipes/")
 async def get_recipes(

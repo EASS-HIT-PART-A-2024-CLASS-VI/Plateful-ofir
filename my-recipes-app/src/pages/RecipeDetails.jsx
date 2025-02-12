@@ -127,6 +127,23 @@ export default function RecipeDetails() {
         </div>
       </div>
 
+      {/* ערכים תזונתיים */}
+      <h3 className="text-2xl font-semibold text-gray-800 mb-3">ערכים תזונתיים</h3>
+      <div className="grid grid-cols-3 gap-4">
+        {recipe.nutritional_info ? (
+          Object.entries(recipe.nutritional_info).map(([key, value], index) => (
+            <div key={index} className="p-3 bg-gray-100 text-center rounded-lg">
+              <span className="block text-lg font-bold text-gray-800">{value}</span>
+              <span className="text-gray-500 text-sm">{key}</span>
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-500">No nutritional info available.</p>
+        )}
+      </div>
+
+
+
       {/* מרכיבים ושלבי הכנה */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
         <div>
