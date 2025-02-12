@@ -37,6 +37,13 @@ class RecipeRequest(BaseModel):
 class CookingQuestionRequest(BaseModel):
     question: str
 
+class ChatMessage(BaseModel):
+    text: str
+    fromUser: bool  # True=משתמש, False=אסיסטנט/מערכת
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
 def is_hebrew(text: str) -> bool:
     """Check if text contains Hebrew characters"""
     hebrew_pattern = re.compile(r'[\u0590-\u05FF\uFB1D-\uFB4F]')
@@ -234,6 +241,51 @@ def setup_ai_routes(app):
                     detail="AI service failed to generate a response"
                 )
         except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        
+    @app.post("/chat", response_model=dict)
+    async def chat_with_ai(request: ChatRequest):
+        """
+        נתיב שמקבל מערך מלא של הודעות (messages), ומחזיר תשובת AI בעברית.
+        """
+        try:
+            # 1. בניית הטקסט (prompt) מהודעות המשתמש ומודעות ה-Assistant
+            conversation_text = ""
+            for i, msg in enumerate(request.messages):
+                if msg.fromUser:
+                    # הודעת משתמש => נסמן "User"
+                    # אם צריך, אפשר לתרגם לאנגלית לפני שליחה ל-AI
+                    user_text_en = await translate_text(msg.text, src="auto", dest="en")
+                    conversation_text += f"User({i+1}): {user_text_en}\n"
+                else:
+                    # הודעת AI קודמת => "Assistant"
+                    assistant_text_en = await translate_text(msg.text, src="auto", dest="en")
+                    conversation_text += f"Assistant({i+1}): {assistant_text_en}\n"
+
+            # הוספה בסוף: "ענה בעברית"
+            conversation_text += "\nPlease provide your next answer in Hebrew."
+
+            # 2. קריאה למודל (ג'מיני)
+            result = await agent.run(conversation_text)
+            if not result or not result.data:
+                raise HTTPException(status_code=500, detail="AI service failed to generate a response")
+
+            answer = result.data  # טקסט שהתתקבל מהמנוע
+
+            # 3. בדיקת עברית; אם אין מספיק עברית, נתרגם
+            if not validate_hebrew_response(answer):
+                answer_he = await translate_text(answer, src="en", dest="he")
+                if not validate_hebrew_response(answer_he):
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Failed to generate valid Hebrew response"
+                    )
+                answer = answer_he
+
+            return {"answer": answer}
+
+        except Exception as e:
+            print(f"Error in /chat: {e}")
             raise HTTPException(status_code=500, detail=str(e))
         
 # 🛠️ פרטי API של USDA

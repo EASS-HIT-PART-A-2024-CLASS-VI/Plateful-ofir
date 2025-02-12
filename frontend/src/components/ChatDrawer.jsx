@@ -1,162 +1,140 @@
-import React, { useState, useEffect } from 'react';
+// ChatDrawer.jsx
+import React, {
+  useState,
+  forwardRef,
+  useImperativeHandle
+} from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import TypingIndicator from "./TypingIndicator"; // רכיב 3 הנקודות
 
-const ChatDrawer = ({ isOpen, onClose, title, messages = [] }) => {
+const ChatDrawer = forwardRef(({ isOpen, onClose, title }, ref) => {
+  const [chatMessages, setChatMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [chatMessages, setChatMessages] = useState(messages);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    setChatMessages(messages);
-  }, [messages]);
+  // -- פונקציית עזר להוספת הודעה לצ'אט
+  const addMessage = (text, fromUser = false) => {
+    setChatMessages((prev) => [...prev, { text, fromUser }]);
+  };
 
+  // -- פונקציית עזר לשליטה ב-loading (נציג את האנימציה)
+  const setLoading = (value) => {
+    setIsLoading(value);
+  };
+
+  // חושפים את הפונקציות אל ההורה דרך ref
+  useImperativeHandle(ref, () => ({
+    addMessage,
+    setLoading
+  }));
+
+  // -- שליחת הודעה של המשתמש לנתיב /chat
   const sendMessage = async () => {
     if (!input.trim()) return;
-
-    const userMessage = { text: input, fromUser: true };
-    setChatMessages(prev => [...prev, userMessage]);
+    const userMsg = { text: input, fromUser: true };
+    const updatedChat = [...chatMessages, userMsg];
+    setChatMessages(updatedChat);
     setInput("");
-    setIsLoading(true);
+    setIsLoading(true); // כאן אנו מציגים את האנימציה
 
     try {
-      // API call placeholder
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setChatMessages(prev => [...prev, { 
-        text: "סליחה, הייתה שגיאה בעיבוד ההודעה שלך", 
-        fromUser: false 
-      }]);
+      const response = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: updatedChat }),
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      setChatMessages((prev) => [...prev, { text: data.answer, fromUser: false }]);
+    } catch (err) {
+      console.error("Error:", err);
+      setChatMessages((prev) => [
+        ...prev,
+        { text: "שגיאה בשליחת הודעה ל-AI", fromUser: false },
+      ]);
+    } finally {
       setIsLoading(false);
     }
   };
-
-  // Function to process markdown-style formatting
-  const processMarkdown = (text) => {
-    // Split text into lines for processing
-    return text.split('\n').map((line, index) => {
-      // Handle headers
-      if (line.startsWith('##')) {
-        return (
-          <h2 key={index} className="text-xl font-bold mt-4 mb-3">
-            {line.replace(/^##\s*/, '')}
-          </h2>
-        );
-      }
-      
-      // Handle single # headers
-      if (line.startsWith('#')) {
-        return (
-          <h1 key={index} className="text-2xl font-bold mt-4 mb-3">
-            {line.replace(/^#\s*/, '')}
-          </h1>
-        );
-      }
-
-      // Handle bullet points with asterisks
-      if (line.trim().match(/^\*\s/)) {
-        return (
-          <li key={index} className="mr-4 mb-2">
-            {line.replace(/^\*\s/, '')}
-          </li>
-        );
-      }
-
-      // Handle numbered items (e.g., "1. *")
-      if (line.trim().match(/^\d+\.\s*\*/)) {
-        return (
-          <div key={index} className="mb-2 font-semibold">
-            {line.replace(/\*/g, '')}
-          </div>
-        );
-      }
-
-      // Handle emphasized text with double asterisks
-      if (line.includes('**')) {
-        const parts = line.split('**');
-        return (
-          <div key={index} className="mb-2">
-            {parts.map((part, i) => (
-              i % 2 === 0 ? part : <strong key={i}>{part}</strong>
-            ))}
-          </div>
-        );
-      }
-
-      // Default paragraph handling
-      return line.trim() ? (
-        <p key={index} className="mb-2">
-          {line}
-        </p>
-      ) : (
-        <div key={index} className="h-2" /> // Empty line spacing
-      );
-    });
-  };
+  
 
   return (
     <div
-      className={`fixed top-0 right-0 h-full w-96 bg-white shadow-lg border-l transition-transform duration-300 ease-in-out ${
-        isOpen ? "translate-x-0" : "translate-x-full"
-      }`}
-      style={{ zIndex: 1000 }}
+      style={{
+        display: isOpen ? "block" : "none",
+        position: "fixed",
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 400,
+        border: "1px solid #ccc",
+        backgroundColor: "white",
+      }}
     >
-      {/* Header */}
-      <div className="p-4 bg-gray-200 flex justify-between items-center">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <button 
-          onClick={onClose} 
-          className="text-gray-600 hover:text-gray-800"
-        >
-          ×
-        </button>
+      {/* כותרת */}
+      <div style={{ padding: 10, borderBottom: "1px solid #ccc" }}>
+        <h3>{title}</h3>
+        <button onClick={onClose}>סגור</button>
       </div>
 
-      {/* Messages Container */}
-      <div className="flex flex-col h-[calc(100%-8rem)] overflow-y-auto p-4" dir="rtl">
-        {chatMessages.map((msg, idx) => (
+      {/* הודעות */}
+      <div style={{ height: "70%", overflowY: "auto", padding: 10 }}>
+        {chatMessages.map((msg, i) => (
           <div
-            key={idx}
-            className={`p-4 rounded-lg max-w-[85%] mb-3 ${
-              msg.fromUser
-                ? "ml-auto bg-blue-500 text-white"
-                : "mr-auto bg-gray-50 border border-gray-200"
-            }`}
+            key={i}
+            style={{
+              backgroundColor: msg.fromUser ? "#cce5ff" : "#f8f9fa",
+              textAlign: msg.fromUser ? "right" : "left",
+              margin: "5px 0",
+              padding: "8px",
+              borderRadius: "5px",
+            }}
           >
-            <div className="text-right">
-              {processMarkdown(msg.text)}
+            <div dir="rtl" style={{ textAlign: "right" }}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {msg.text}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
+
+        {/* אם isLoading = true -> מציגים את האנימציית 3 נקודות */}
         {isLoading && (
-          <div className="mr-auto bg-gray-100 p-3 rounded-lg">
-            <span className="animate-pulse">...</span>
+          <div
+            style={{
+              margin: "5px 0",
+              padding: "8px",
+              backgroundColor: "#f8f9fa",
+              textAlign: "left",
+              borderRadius: "5px",
+              width: "auto",
+              display: "inline-block",
+            }}
+          >
+            <TypingIndicator />
           </div>
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t">
-        <div className="flex gap-2" dir="rtl">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="הקלד הודעה..."
-            className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            dir="rtl"
-          />
-          <button
-            onClick={sendMessage}
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
-          >
-            שלח
-          </button>
-        </div>
+      {/* שורת קלט */}
+      <div style={{ borderTop: "1px solid #ccc", padding: 10 }}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="הקלד הודעה..."
+          style={{ width: "70%", marginRight: 10 }}
+        />
+        <button onClick={sendMessage} disabled={isLoading}>
+          שלח
+        </button>
       </div>
     </div>
   );
-};
+});
 
 export default ChatDrawer;
