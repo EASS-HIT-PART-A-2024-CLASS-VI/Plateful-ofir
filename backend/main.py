@@ -13,7 +13,7 @@ import os
 from passlib.context import CryptContext
 from models.recipe_model import (
     Comment, Recipe, Ingredient, NutritionalInfo, SharedRecipe, 
-    ShoppingList, CookingTimer
+    ShoppingList,Rating, CookingTimer
 )
 from models.user_model import User
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -41,10 +41,10 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # ✅ מותר רק מה-Frontend
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # ✅ מאפשר כל סוגי הבקשות (GET, POST, OPTIONS וכו')
-    allow_headers=["*"],  # ✅ מאפשר כל סוגי ה-Headers
+    allow_methods=["*"], 
+    allow_headers=["*"],  
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")

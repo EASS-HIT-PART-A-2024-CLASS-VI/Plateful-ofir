@@ -100,3 +100,10 @@ class SharedRecipe(Base):
 
     recipe = relationship("Recipe", back_populates="shared_with")
     user = relationship("User")
+
+class Rating(Base):
+    __tablename__ = "ratings"
+    id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    score = Column(Integer, nullable=False)

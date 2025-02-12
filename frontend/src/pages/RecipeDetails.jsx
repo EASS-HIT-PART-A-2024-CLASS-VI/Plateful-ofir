@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ChatDrawer from "../components/ChatDrawer";
+import RatingStars from "../components/RatingStars";
 
 export default function RecipeDetails() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ export default function RecipeDetails() {
   const [comments, setComments] = useState([]);
   const [timers, setTimers] = useState([]);
   const [rating, setRating] = useState(0);
+  const [userRating, setUserRating] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const userId = localStorage.getItem("user_id");
@@ -107,6 +109,38 @@ export default function RecipeDetails() {
     }
   };
 
+  const handleRateRecipe = async (score) => {
+    if (!recipe) return;
+    const userId = localStorage.getItem("user_id");
+    if (!userId) {
+      alert("חייבים להתחבר כדי לדרג!");
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8000/recipes/${recipe.id}/rate/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: parseInt(userId), score })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP Error ${response.status}`);
+      }
+      const data = await response.json();
+      // data.average_rating
+      setRecipe((prev) => ({
+        ...prev,
+        rating: data.average_rating // עדכון הממוצע
+      }));
+      setRating(data.average_rating);
+      setUserRating(score);
+      alert(`דירוגך נשמר! הדירוג הממוצע כעת הוא: ${data.average_rating.toFixed(2)}`);
+    } catch (err) {
+      console.error("Rating error:", err);
+      alert("שגיאה בעת שמירת הדירוג");
+    }
+  };
+
   const handleFindSubstitute = async (ingredientName) => {
     // 1. פותחים את הצ'אט
     setIsChatOpen(true);
@@ -167,6 +201,14 @@ export default function RecipeDetails() {
           <div className="flex items-center gap-4 mt-4">
             <p className="text-lg">⏳ {recipe.cooking_time} דקות</p>
             <p className="text-lg">🍽 {recipe.servings} מנות</p>
+              {/* מציג ממוצע */}
+              <p>דירוג ממוצע: {rating.toFixed(2)}</p>
+
+              {/* מציג דירוג משתמש */}
+              <RatingStars
+              currentRating={rating} 
+              onRate={handleRateRecipe}
+            />
           </div>
         </div>
       </div>
