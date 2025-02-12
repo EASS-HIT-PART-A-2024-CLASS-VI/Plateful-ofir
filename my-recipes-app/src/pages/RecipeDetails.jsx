@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef  } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ChatDrawer from "../components/ChatDrawer";
 
 export default function RecipeDetails() {
   const { id } = useParams();
@@ -13,6 +14,11 @@ export default function RecipeDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const userId = localStorage.getItem("user_id");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatTitle, setChatTitle] = useState("Chat");
+  const [chatMessages, setChatMessages] = useState([]);
+  const [activeTimers, setActiveTimers] = useState({});
+
 
   useEffect(() => {
     if (id) {
@@ -102,6 +108,43 @@ export default function RecipeDetails() {
     }
   };
 
+  const handleFindSubstitute = async (ingredientName) => {
+    try {
+      setChatTitle(`תחליפים ל-${ingredientName}`);
+      setChatMessages([{ text: "מחפש תחליפים...", fromUser: false }]);
+      setIsChatOpen(true);
+  
+      const response = await fetch("http://localhost:8000/ingredient_substitution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingredients: [ingredientName] }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      
+      if (data && data.substitutes) {
+        setChatMessages([
+          { text: `תחליפים אפשריים ל-${ingredientName}:`, fromUser: false },
+          { text: data.substitutes, fromUser: false }
+        ]);
+      } else {
+        setChatMessages([
+          { text: `לא נמצאו תחליפים ל-${ingredientName}`, fromUser: false }
+        ]);
+      }
+    } catch (error) {
+      console.error("Error fetching substitutes:", error);
+      setChatMessages([
+        { text: "אירעה שגיאה בחיפוש תחליפים. נסה שוב מאוחר יותר.", fromUser: false }
+      ]);
+    }
+  };
+  
+
   if (loading) return <p className="text-center mt-10 text-blue-500">טוען מתכון...</p>;
   if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;
   if (!recipe) return <p className="text-center text-gray-500 mt-10">מתכון לא נמצא.</p>;
@@ -142,16 +185,22 @@ export default function RecipeDetails() {
         )}
       </div>
 
-
-
       {/* מרכיבים ושלבי הכנה */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
         <div>
           <h2 className="text-2xl font-bold">🥦 מרכיבים</h2>
           <ul className="mt-4 list-disc pl-5">
             {recipe.ingredients.map((ingredient) => (
-              <li key={ingredient.id} className="text-lg">{ingredient.name} - {ingredient.quantity} {ingredient.unit}</li>
-            ))}
+            <li key={ingredient.id} className="text-lg flex items-center gap-4">
+              {ingredient.name} - {ingredient.quantity} {ingredient.unit}
+              <button 
+                onClick={() => handleFindSubstitute(ingredient.name)}
+                className="bg-gray-500 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition"
+              >
+                🔄 Find Substitute
+              </button>
+            </li>
+          ))}
           </ul>
         </div>
 
@@ -203,6 +252,8 @@ export default function RecipeDetails() {
           💬 הוסף תגובה
         </button>
       </div>
+
+      <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} title={chatTitle} messages={chatMessages} />
     </div>
   );
 }
