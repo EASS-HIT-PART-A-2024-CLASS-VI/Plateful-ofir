@@ -566,6 +566,49 @@ async def register_user(user: UserRegister, db: Session = Depends(get_db)):
 
     return {"message": "User registered successfully"}
 
+@app.post("/recipes/{recipe_id}/comments/{comment_id}/reply")
+async def reply_to_comment(
+    recipe_id: int,
+    comment_id: int,
+    comment_data: CommentRequest,  # כולל user_id, content
+    db: Session = Depends(get_db)
+):
+    # 1. בדוק שהמתכון קיים
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # 2. בדוק שהתגובה שאליה משיבים קיימת
+    parent_comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not parent_comment:
+        raise HTTPException(status_code=404, detail="Parent comment not found")
+
+    # 3. בדוק תוכן התגובה (לא ריק)
+    if not comment_data.content.strip():
+        raise HTTPException(status_code=400, detail="Reply cannot be empty")
+
+    # 4. צור את תגובת-הבן
+    reply_comment = Comment(
+        recipe_id=recipe_id,
+        user_id=comment_data.user_id,
+        content=comment_data.content,
+        timestamp=datetime.utcnow().isoformat(),
+        parent_id=comment_id
+    )
+    db.add(reply_comment)
+    db.commit()
+    db.refresh(reply_comment)
+
+    return {
+        "message": "Reply added successfully",
+        "reply": {
+            "id": reply_comment.id,
+            "content": reply_comment.content,
+            "parent_id": reply_comment.parent_id,
+            "timestamp": reply_comment.timestamp
+        }
+    }
+
 @app.post("/login")
 async def login_user(user_data: dict, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_data["email"]).first()

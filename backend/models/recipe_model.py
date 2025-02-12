@@ -83,13 +83,15 @@ class Comment(Base):
     __tablename__ = 'comments'
 
     id = Column(Integer, primary_key=True, index=True)
-    recipe_id = Column(Integer, ForeignKey('recipes.id'))
-    user_id = Column(Integer, ForeignKey('users.id'))
+    recipe_id = Column(Integer, ForeignKey('recipes.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     content = Column(Text, nullable=False)
-    timestamp = Column(String)
+    timestamp = Column(String, nullable=False)
+    parent_id = Column(Integer, ForeignKey('comments.id'), nullable=True)  
 
     recipe = relationship("Recipe", back_populates="comments")
     user = relationship("User")
+    parent_comment = relationship("Comment", remote_side=[id], backref="children") 
 
 class SharedRecipe(Base):
     __tablename__ = 'shared_recipes'
