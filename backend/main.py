@@ -136,7 +136,10 @@ class RatingRequest(BaseModel):
 
 class CommentRequest(BaseModel):
     user_id: int
+    username: str
     content: str
+    parent_id: Optional[int] = None
+
 
 # Recipe endpoints
 STATIC_DIR = "static"
@@ -524,8 +527,10 @@ async def add_comment(
     comment = Comment(
         recipe_id=recipe_id,
         user_id=comment_data.user_id,
+        username=comment_data.username,  
         content=comment_data.content,
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.utcnow().isoformat(),
+        parent_id=comment_data.parent_id
     )
 
     db.add(comment)
@@ -539,8 +544,10 @@ async def get_comments(recipe_id: int, db: Session = Depends(get_db)):
         {
             "id": comment.id,
             "user_id": comment.user_id,
+            "username": comment.username,
             "content": comment.content,
-            "timestamp": comment.timestamp
+            "timestamp": comment.timestamp,
+            "parent_id": comment.parent_id  # ✅ מחזיר את ה-parent_id
         }
         for comment in comments
     ]
@@ -591,6 +598,7 @@ async def reply_to_comment(
     reply_comment = Comment(
         recipe_id=recipe_id,
         user_id=comment_data.user_id,
+        username=comment_data.username,
         content=comment_data.content,
         timestamp=datetime.utcnow().isoformat(),
         parent_id=comment_id
@@ -603,6 +611,7 @@ async def reply_to_comment(
         "message": "Reply added successfully",
         "reply": {
             "id": reply_comment.id,
+            "username": reply_comment.username,
             "content": reply_comment.content,
             "parent_id": reply_comment.parent_id,
             "timestamp": reply_comment.timestamp

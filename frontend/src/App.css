@@ -42,3 +42,165 @@
   color: #888;
 }
 
+/* 🔹 תיבת הוספת תגובה */
+.comment-input-container, .reply-box {
+  background-color: #F4F6F7;
+  padding: 12px;
+  border-radius: 10px;
+  max-width: 700px;
+  margin: 15px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* 📝 שדות הקלט */
+.comment-input-container input,
+.comment-input-container textarea,
+.reply-box input,
+.reply-box textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  background-color: white;
+  color: #333;
+  resize: none;
+}
+
+/* ✨ כפתור שליחת תגובה */
+.comment-submit-btn, .comment-submit {
+  background-color: #0073e6;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: 0.3s;
+  align-self: center;
+  width: fit-content;
+}
+
+.comment-submit-btn:hover, .comment-submit:hover {
+  background-color: #005bb5;
+}
+
+/* 🔹 מבנה כללי של תגובה */
+.comment-container {
+  margin-bottom: 5px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: transparent;
+  max-width: 600px;
+  font-size: 18px;
+  color: #254A5D;
+  font-weight: 400;
+  position: relative;
+}
+
+/* 🔹 מרווחים קטנים יותר לתגובות */
+.comment-container:not(:last-child) {
+  margin-bottom: 8px;
+}
+
+/* 🔹 הוספת מרווח קטן לכל רמה של תגובה מקוננת */
+.comment-container.level-1 { margin-right: 20px; }
+.comment-container.level-2 { margin-right: 40px; }
+.comment-container.level-3 { margin-right: 60px; }
+
+/* 🔹 אזור פרטי המשתמש */
+.comment-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.comment-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #b388ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  margin-left: 8px;
+  color: white;
+}
+
+.comment-username {
+  font-weight: bold;
+  color: #333;
+  font-size: 18px;
+  margin: 0;
+}
+
+/* 🔹 תוכן התגובה */
+.comment-content {
+  margin-bottom: 4px;
+  color: #555;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+
+/* 🔹 תגובות מקוננות */
+.nested-comments {
+  margin-top: 6px;
+}
+/* 🔹 הקטנת רווח בין תגובות */
+.comment-section {
+  margin-bottom: 0px !important;
+  padding-bottom: 0px !important;
+}
+
+/* 🔹 ביטול מרווח נוסף אם יש */
+.comment-container {
+  margin-bottom: 3px !important; /* להקטין מרווח בין תגובות */
+  padding-bottom: 0px !important;
+}
+
+/* 🔹 ביטול רווח מיותר לפני ההוספה */
+.comment-input-container {
+  margin-top: 10px !important;
+}
+
+/* 🔹 כפתור השב */
+.reply-button {
+  background-color: transparent;
+  color: #0073e6;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: underline;
+  margin-bottom: 4px;
+  padding: 5px;
+}
+
+.reply-button:hover {
+  color: "none";
+}
+
+/* 🔹 כפתור שליחת תגובה */
+.comment-submit-btn {
+  background-color: #0073e6 !important;
+  color: white !important;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: 0.3s;
+  align-self: flex-end;
+}
+
+.comment-submit-btn:hover {
+  background-color: #005bb5 !important;
+}

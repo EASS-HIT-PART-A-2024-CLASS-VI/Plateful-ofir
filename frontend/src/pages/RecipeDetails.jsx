@@ -5,12 +5,18 @@ import "react-toastify/dist/ReactToastify.css";
 import ChatDrawer from "../components/ChatDrawer";
 import RatingStars from "../components/RatingStars";
 import CommentItem from "../components/CommentItem";
+import "../App.css";
+
+
+
 
 export default function RecipeDetails() {
   const { id } = useParams();
   const [recipe, setRecipe] = useState(null);
+  const [showCommentForm, setShowCommentForm] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState([]);
+  const [newCommentName, setNewCommentName] = useState(""); 
   const [timers, setTimers] = useState([]);
   const [rating, setRating] = useState(0);
   const [userRating, setUserRating] = useState(0);
@@ -70,6 +76,7 @@ export default function RecipeDetails() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId,
+          username: newCommentName || "אנונימי",
           content: newComment
         })
       });
@@ -78,6 +85,7 @@ export default function RecipeDetails() {
         throw new Error(errorData.detail || "שגיאה בהוספת תגובה");
       }
       setNewComment("");
+      setNewCommentName("");
       toast.success("✅ תגובה נוספה!");
       fetchComments();
     } catch (error) {
@@ -85,26 +93,37 @@ export default function RecipeDetails() {
       toast.error("❌ לא ניתן להוסיף תגובה.");
     }
   };
+  
 
   // טיפול בשליחת תגובת reply – onReply מופעל בתוך רכיב CommentItem
-  const handleReply = async (parentCommentId, replyText) => {
+  const handleReply = async (parentCommentId, replyText, replyName) => {
     if (!userId) {
       alert("יש להתחבר כדי להגיב!");
       return;
     }
+  
+    const payload = {
+      user_id: userId,
+      username: replyName || "אנונימי",
+      content: replyText
+    };
+  
+    console.log("📤 שולח תגובת reply:", payload); // ✅ הדפסת הנתונים שנשלחים לשרת
+  
     try {
       const response = await fetch(`http://localhost:8000/recipes/${id}/comments/${parentCommentId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: userId,
-          content: replyText
-        })
+        body: JSON.stringify(payload)
       });
+  
+      const data = await response.json();
+  
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "שגיאה בשליחת תגובה");
+        console.error("❌ שגיאה בשליחת תגובה:", data);  // ✅ הדפס שגיאה מפורטת
+        throw new Error(data.detail || "שגיאה בשליחת תגובה");
       }
+  
       toast.success("✅ תגובתך נוספה!");
       fetchComments();
     } catch (error) {
@@ -112,6 +131,7 @@ export default function RecipeDetails() {
       toast.error("❌ לא ניתן לשלוח תגובה.");
     }
   };
+  
 
   // פונקציה לבניית עץ תגובות מקונן מתוך מערך תגובות שטוח
   function buildCommentTree(allComments) {
@@ -250,14 +270,6 @@ export default function RecipeDetails() {
           <div className="flex items-center gap-4 mt-4">
             <p className="text-lg">⏳ {recipe.cooking_time} דקות</p>
             <p className="text-lg">🍽 {recipe.servings} מנות</p>
-              {/* מציג ממוצע */}
-              <p>דירוג ממוצע: {rating.toFixed(2)}</p>
-
-              {/* מציג דירוג משתמש */}
-              <RatingStars
-              currentRating={rating} 
-              onRate={handleRateRecipe}
-            />
           </div>
         </div>
       </div>
@@ -317,29 +329,52 @@ export default function RecipeDetails() {
         </div>
       </div>
       <div>
-        {/* תגובות */}
-      <div className="mt-8 bg-gray-100 p-6 rounded-lg">
+      {/* 🔹 אזור התגובות */}
+      <div className="comments-container">
         <h2 className="text-2xl font-bold mb-4">💬 תגובות</h2>
 
-        {/* הצגת עץ תגובות מקונן */}
+        {/* הצגת דירוג */}
+        <p>דירוג ממוצע: {rating.toFixed(2)}</p>
+        <RatingStars currentRating={rating} onRate={handleRateRecipe} />
+
+        {/* 🔹 הצגת התגובות */}
         {commentTree.length > 0 ? (
           commentTree.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} onReply={handleReply} />
+            <div key={comment.id} className={`comment ${comment.parent_id ? "comment-reply" : ""}`}>
+              <CommentItem comment={comment} onReply={handleReply} />
+            </div>
           ))
         ) : (
           <p className="text-gray-500">אין תגובות</p>
         )}
 
-        {/* טופס להוספת תגובה ראשית */}
-        <textarea
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="כתוב תגובה..."
-          className="border p-2 w-full mt-4"
-        ></textarea>
-        <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 py-2 rounded mt-2">
-          הוסף תגובה
+        {/* 🔹 כפתור הוספת תגובה */}
+        <button
+          onClick={() => setShowCommentForm(!showCommentForm)}
+          className="comment-toggle-btn"
+        >
+          {showCommentForm ? "ביטול" : "הוסף תגובה"}
         </button>
+
+        {/* 🔹 טופס הוספת תגובה (יופיע רק אם showCommentForm = true) */}
+        {showCommentForm && (
+          <div className="comment-input-container">
+            <input
+              type="text"
+              value={newCommentName}
+              onChange={(e) => setNewCommentName(e.target.value)}
+              placeholder="שם"
+            />
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="כתוב תגובה..."
+            />
+            <button onClick={handleAddComment} className="comment-submit-btn">
+              שלח תגובה
+            </button>
+        </div>
+        )}
       </div>
     </div>
 

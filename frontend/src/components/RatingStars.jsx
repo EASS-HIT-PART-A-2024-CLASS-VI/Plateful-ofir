@@ -1,40 +1,26 @@
-// RatingStars.jsx
 import React, { useState } from "react";
 
 export default function RatingStars({ currentRating, onRate }) {
-  const [hoverRating, setHoverRating] = useState(0);
+  const [hover, setHover] = useState(null);
 
-  // פונקציה שתצבע את הכוכבים לפי hoverRating (אם > 0), אחרת לפי currentRating
-  const getDisplayedRating = () => {
-    return hoverRating > 0 ? hoverRating : currentRating;
-  };
-
-  const renderStars = () => {
-    const displayed = getDisplayedRating();
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+      {[1, 2, 3, 4, 5].map((star) => (
         <span
-          key={i}
+          key={star}
+          onClick={() => onRate(star)}
+          onMouseEnter={() => setHover(star)}
+          onMouseLeave={() => setHover(null)}
           style={{
             cursor: "pointer",
-            color: i <= displayed ? "gold" : "gray",
-            fontSize: "24px",
-            marginRight: "5px",
+            fontSize: "30px",
+            color: star <= (hover || currentRating) ? "#FFD700" : "#E0E0E0",
+            transition: "color 0.2s ease-in-out"
           }}
-          // בלחיצה נזמין onRate(i)
-          onClick={() => onRate(i)}
-          // כשהעכבר מעל כוכב זה – נעדכן hoverRating
-          onMouseEnter={() => setHoverRating(i)}
-          // וכשיוצאים מהכוכב (mouseLeave) נאפס
-          onMouseLeave={() => setHoverRating(0)}
         >
           ★
         </span>
-      );
-    }
-    return stars;
-  };
-
-  return <div>{renderStars()}</div>;
+      ))}
+    </div>
+  );
 }

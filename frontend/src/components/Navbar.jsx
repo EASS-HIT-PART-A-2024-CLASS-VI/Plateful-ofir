@@ -56,9 +56,9 @@ export default function Navbar() {
       {/* התחברות / התנתקות */}
       <div>
         {user ? (
-          <button onClick={handleLogout} className="text-[#E63946] hover:text-red-700 transition-all">
+          <p onClick={handleLogout} className="text-[#E63946] hover:text-red-700 transition-all">
             התנתקות
-          </button>
+          </p>
         ) : (
           <Link to="/login" className="hover:text-[#1D3557] transition-all">התחברות</Link>
         )}

@@ -53,49 +53,52 @@ export default function CreateRecipe({ fetchUserRecipes }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!userId) {
-      toast.error("❌ אנא התחבר כדי ליצור מתכון.");
+      toast.error("Please login to create a recipe.");
       return;
     }
-
+  
     const formData = new FormData();
     Object.entries(newRecipe).forEach(([key, value]) => {
-      formData.append(key, value);
+      formData.append(key, typeof value === "number" ? value.toString() : value);
     });
-
     formData.append("creator_id", userId);
-    formData.append("ingredients", JSON.stringify(ingredients));
-
-    if (image) {
-        formData.append("image", image);  // ✅ שליחת תמונה אם קיימת
-    } else {
-        console.warn("⚠️ No image selected.");
-    }
-
+    formData.append("ingredients", JSON.stringify(ingredients.map(ing => ({
+      ...ing,
+      quantity: parseFloat(ing.quantity)
+    }))));
+  
+    console.log("📤 Sending Recipe Data:", Object.fromEntries(formData));
+  
+    if (image) formData.append("image", image); // מוודא שהתמונה נשלחת אם הועלתה
+  
     try {
       const response = await fetch("http://localhost:8000/recipes/", {
         method: "POST",
         body: formData,
       });
-
+  
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "❌ שגיאה ביצירת המתכון");
-
-      console.log("✅ מתכון נשמר:", data);
-
-      toast.success("✅ מתכון נשמר בהצלחה!");
-
+      console.log("📥 Received Response:", data);
+      if (!response.ok) throw new Error(data.detail || "Failed to create recipe");
+  
+      toast.success("Recipe created successfully!");
+  
+      // אחרי ההגשה, מאפס את שדה התמונה בלבד
       setNewRecipe({ name: "", preparation_steps: "", cooking_time: "", servings: "", categories: "", tags: "" });
-      setImage(null);
-      setIngredients([]);
-      fetchUserRecipes();
+      setImage(null);  // מאפס את שדה התמונה כדי שלא תישאר מוצגת
+      setIngredients([]);  // מנקה את המצרכים
+      setTimers([]);  // מנקה את הטיימרים אם ישנם
+  
+      fetchUserRecipes(); // Fetch the updated list of recipes
     } catch (error) {
       console.error("❌ Error creating recipe:", error);
-      toast.error(error.message || "❌ שגיאה בלתי צפויה.");
+      toast.error(error.message || "Failed to create recipe.");
     }
-};
-
+  };
+  
+  
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h2 className="text-3xl font-bold mb-4">📖 יצירת מתכון חדש</h2>
@@ -143,7 +146,13 @@ export default function CreateRecipe({ fetchUserRecipes }) {
         <button type="button" onClick={addTimer} className="bg-green-500 text-white px-4 py-2 rounded">➕ הוסף טיימר</button>
 
         <label className="block text-gray-700">📸 העלאת תמונה:</label>
-        <input type="file" onChange={handleImageChange} className="w-full" accept="image/*" />
+        {image && (
+        <div className="mb-4">
+          <img src={URL.createObjectURL(image)} alt="Uploaded" className="w-32 h-32 object-cover" /> {/* הקטנה של התמונה */}
+        </div>
+      )}
+      <input type="file" onChange={handleImageChange} className="w-full" accept="image/*" />
+
 
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded w-full">✅ שמור מתכון</button>
       </form>

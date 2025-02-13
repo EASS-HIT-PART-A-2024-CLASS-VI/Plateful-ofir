@@ -46,7 +46,6 @@ export default function Login() {
 
   const handleRegister = async () => {
     try {
-      const username = email.split("@")[0]; // ✅ יצירת שם משתמש אוטומטי מהמייל
       const response = await fetch("http://localhost:8000/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

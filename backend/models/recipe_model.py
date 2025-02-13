@@ -85,6 +85,7 @@ class Comment(Base):
     id = Column(Integer, primary_key=True, index=True)
     recipe_id = Column(Integer, ForeignKey('recipes.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    username = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     timestamp = Column(String, nullable=False)
     parent_id = Column(Integer, ForeignKey('comments.id'), nullable=True)  
