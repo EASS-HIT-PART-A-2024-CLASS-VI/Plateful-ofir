@@ -64,11 +64,11 @@ button {
   padding: 12px 24px;
   font-size: 1em;
   font-weight: 500;
-  background-color: #A5A58D;
+  background-color: "none";
   color: white;
   cursor: pointer;
   transition: 0.3s;
 }
 button:hover {
-  background-color: #6B705C;
+  background-color: "none";
 }

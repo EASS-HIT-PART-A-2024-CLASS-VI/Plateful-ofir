@@ -20,7 +20,7 @@ export default function UserDashboard() {
 
   const fetchUserRecipes = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/users/${user.id}/recipes`, {
+      const response = await fetch(`/api/users/${user.id}/recipes`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("authToken")}`
         }
@@ -39,7 +39,7 @@ export default function UserDashboard() {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/users/${user.id}/notifications`, {
+      const response = await fetch(`/api/users/${user.id}/notifications`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("authToken")}`
         }

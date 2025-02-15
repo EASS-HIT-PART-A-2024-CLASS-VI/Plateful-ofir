@@ -14,7 +14,7 @@ export default function EditRecipe() {
   const [timers, setTimers] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/recipes/${id}`)
+    fetch(`/api/recipes/${id}`)
       .then((response) => response.json())
       .then((data) => {
         console.log("📥 Loaded Recipe Data:", data);
@@ -80,7 +80,7 @@ export default function EditRecipe() {
     if (image) formData.append("image", image);  // ✅ שליחת תמונה אם קיימת
 
     try {
-      const response = await fetch(`http://localhost:8000/recipes/${id}`, {
+      const response = await fetch(`/api/recipes/${id}`, {
         method: "PUT",
         body: formData,
       });

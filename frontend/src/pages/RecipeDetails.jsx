@@ -31,7 +31,7 @@ export default function RecipeDetails() {
 
   const fetchRecipe = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/recipes/${id}`);
+      const response = await fetch(`/api/recipes/${id}`);
       if (!response.ok) throw new Error(`שגיאה בקבלת המתכון. סטטוס: ${response.status}`);
       const data = await response.json();
       setRecipe(data);
@@ -47,7 +47,7 @@ export default function RecipeDetails() {
   const fetchComments = async () => {
     try {
       if (!id) return;
-      const response = await fetch(`http://localhost:8000/recipes/${id}/comments`);
+      const response = await fetch(`/api/recipes/${id}/comments`);
       if (!response.ok) throw new Error("שגיאה בשליפת תגובות");
       const data = await response.json();
       setComments(data);
@@ -65,7 +65,7 @@ export default function RecipeDetails() {
         alert("לא ניתן לשלוח תגובה ריקה");
         return;
       }
-      const response = await fetch(`http://localhost:8000/recipes/${id}/comment`, {
+      const response = await fetch(`/api/recipes/${id}/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -93,7 +93,7 @@ export default function RecipeDetails() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8000/recipes/${id}/comments/${parentCommentId}/reply`, {
+      const response = await fetch(`/api/recipes/${id}/comments/${parentCommentId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -166,7 +166,7 @@ export default function RecipeDetails() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8000/recipes/${recipe.id}/rate/`, {
+      const response = await fetch(`/api/recipes/${recipe.id}/rate/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: parseInt(userId), score })
@@ -201,7 +201,7 @@ export default function RecipeDetails() {
 
     try {
       // שולחים בקשה לשרת
-      const response = await fetch("http://localhost:8000/ingredient_substitution", {
+      const response = await fetch("/api/ingredient_substitution", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ingredients: [ingredientName] }),
@@ -238,7 +238,7 @@ export default function RecipeDetails() {
       <div className="flex flex-col md:flex-row items-start gap-8">
         {/* תמונת מתכון */}
         <div className="w-full md:w-1/2">
-          <img src={`http://localhost:8000${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
+          <img src={`/api${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
         </div>
 
         {/* פרטי מתכון */}

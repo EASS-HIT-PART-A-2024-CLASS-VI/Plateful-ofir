@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";  // 🟢 הוספת useEffect
+import React, { useEffect, useState } from "react"; 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { ToastContainer } from "react-toastify"; 
+import { ToastContainer, toast } from "react-toastify"; 
 import "react-toastify/dist/ReactToastify.css"; 
 import { UserProvider } from "./context/UserContext";
 
@@ -14,15 +14,26 @@ import UserDashboard from "./pages/UserDashboard";
 import EditRecipe from "./pages/EditRecipe"; 
 
 export default function App() {
+  const [backendStatus, setBackendStatus] = useState("🔄 בודק חיבור ל-Backend...");
+
   useEffect(() => {
-    fetch("http://localhost:8000/")
+    fetch("/api/")
       .then((res) => {
-        console.log("🔎 Response Status:", res.status); // ✅ מדפיס את הסטטוס
+        if (!res.ok) {
+          throw new Error(`❌ Backend returned status ${res.status}`);
+        }
         return res.json();
       })
-      .then((data) => console.log("✅ Backend Response:", data))
-      .catch((error) => console.error("❌ Backend connection failed:", error));
-}, []);
+      .then((data) => {
+        console.log("✅ Backend Response:", data);
+        setBackendStatus("✅ חיבור ל-Backend תקין!");
+      })
+      .catch((error) => {
+        console.error("❌ Backend connection failed:", error);
+        setBackendStatus("❌ שגיאה בחיבור ל-Backend!");
+        toast.error("❌ חיבור ל-Backend נכשל!");
+      });
+  }, []);
 
   return (
     <UserProvider>
@@ -42,6 +53,5 @@ export default function App() {
         </div>
       </Router>
     </UserProvider>
-    
   );
 }

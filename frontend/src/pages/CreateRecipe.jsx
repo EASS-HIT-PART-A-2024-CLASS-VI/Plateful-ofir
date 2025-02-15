@@ -74,7 +74,7 @@ export default function CreateRecipe({ fetchUserRecipes }) {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/recipes/", {
+      const response = await fetch("/api/recipes/", {
         method: "POST",
         body: formData,
       });
