@@ -59,6 +59,12 @@ export default function CreateRecipe({ fetchUserRecipes }) {
       return;
     }
 
+  const formattedTimers = timers.map(timer => ({
+      step_number: parseInt(timer.step_number, 10),  // ✅ להמיר למספר
+      duration: parseInt(timer.duration, 10),  // ✅ להמיר למספר
+      label: timer.label
+  }));
+
     const formData = new FormData();
     Object.entries(newRecipe).forEach(([key, value]) => {
       formData.append(key, value);
@@ -66,6 +72,7 @@ export default function CreateRecipe({ fetchUserRecipes }) {
 
     formData.append("creator_id", userId);
     formData.append("ingredients", JSON.stringify(ingredients));
+    formData.append("timers", JSON.stringify(formattedTimers));
 
     if (image) {
         formData.append("image", image);  // ✅ שליחת תמונה אם קיימת
@@ -89,6 +96,7 @@ export default function CreateRecipe({ fetchUserRecipes }) {
       setNewRecipe({ name: "", preparation_steps: "", cooking_time: "", servings: "", categories: "", tags: "" });
       setImage(null);
       setIngredients([]);
+      setTimers([]);
       fetchUserRecipes();
     } catch (error) {
       console.error("❌ Error creating recipe:", error);

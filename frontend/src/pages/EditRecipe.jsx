@@ -20,6 +20,7 @@ export default function EditRecipe() {
         console.log("📥 Loaded Recipe Data:", data);
         setRecipe(data);
         setIngredients(data.ingredients || []); 
+        setTimers(data.timers || []); 
         setLoading(false);
       })
       .catch((error) => {
@@ -64,6 +65,13 @@ export default function EditRecipe() {
     setIngredients(ingredients.filter((_, i) => i !== index));
   };
 
+  const formattedTimers = timers.map(timer => ({
+    step_number: parseInt(timer.step_number, 10),  // ✅ להמיר למספר
+    duration: parseInt(timer.duration, 10),  // ✅ להמיר למספר
+    label: timer.label
+}));
+console.log("📤 טיימרים שנשלחים:", formattedTimers);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const userId = localStorage.getItem("user_id");
@@ -76,8 +84,10 @@ export default function EditRecipe() {
     const formData = new FormData();
     Object.entries(recipe).forEach(([key, value]) => formData.append(key, value));
     formData.append("current_user_id", userId);
-    formData.append("ingredients", JSON.stringify(ingredients)); // ✅ שליחת מצרכים כ-JSON
-    if (image) formData.append("image", image);  // ✅ שליחת תמונה אם קיימת
+    formData.append("ingredients", JSON.stringify(ingredients)); 
+    formData.append("timers", JSON.stringify(formattedTimers));
+    console.log("📤 JSON של טיימרים שנשלח:", JSON.stringify(formattedTimers));
+    if (image) formData.append("image", image); 
 
     try {
       const response = await fetch(`/api/recipes/${id}`, {

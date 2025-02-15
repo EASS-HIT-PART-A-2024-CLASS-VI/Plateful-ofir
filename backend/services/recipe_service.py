@@ -13,6 +13,7 @@ def create_recipe(db: Session, recipe_data: dict):
     """Creates a new recipe and saves it to the database, including its ingredients and nutrition."""
     
     ingredients_data = recipe_data.pop("ingredients", [])
+    timers_data = recipe_data.pop("timers", [])
 
     # יצירת מתכון חדש
     recipe = Recipe(**recipe_data)
@@ -29,6 +30,15 @@ def create_recipe(db: Session, recipe_data: dict):
             recipe_id=recipe.id
         )
         db.add(new_ingredient)
+    
+    for timer in timers_data:
+        new_timer = CookingTimer(
+            recipe_id=recipe.id,
+            step_number=timer["step_number"],
+            duration=timer["duration"],
+            label=timer.get("label", f"שלב {timer['step_number']}")  # ברירת מחדל לתיאור
+        )
+        db.add(new_timer)
 
     db.commit()
     db.refresh(recipe)  
