@@ -64,7 +64,7 @@ export default function UserDashboard() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">שלום, {user?.username}!</h2>
+      <h2 className="text-3xl font-bold mb-6">  שלום, {user?.first_name} {user?.last_name}!</h2>
 
       {/* Notifications Section */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">

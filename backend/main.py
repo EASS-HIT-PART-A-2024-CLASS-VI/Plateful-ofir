@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials,OAuth2PasswordBearer
 
 from models.security import verify_password, create_access_token
-import jwt
+from jose import JWTError, jwt 
 import json
 import shutil
 import os
@@ -41,10 +41,11 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["http://localhost:3000", "http://localhost:8000", "http://127.0.0.1:3000", "http://127.0.0.1:8000"],
     allow_credentials=True,
-    allow_methods=["*"], 
-    allow_headers=["*"],  
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -120,8 +121,14 @@ class RecipeCreate(BaseModel):
 
 class UserRegister(BaseModel):
     username: str
-    email: str
+    first_name: str  
+    last_name: str   
+    email: EmailStr
     password: str
+    birthdate: Optional[str] = None 
+    gender: Optional[str] = None
+    phone_number: Optional[str] = None
+
 
 class UserLogin(BaseModel):
     email: str
@@ -546,25 +553,38 @@ async def get_comments(recipe_id: int, db: Session = Depends(get_db)):
     ]
 
 # User endpoints
-@app.post("/register", include_in_schema=True)  # ✅ אין `/` בסוף הנתיב
+@app.post("/register", include_in_schema=True)
 async def register_user(user: UserRegister, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    try:
+        print("📥 Data received:", user.dict())  # ✅ הדפסת הנתונים שמתקבלים
 
-    hashed_password = pwd_context.hash(user.password) 
+        existing_user = db.query(User).filter(User.email == user.email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
 
-    new_user = User(
-        username=user.username,
-        email=user.email,
-        password_hash=hashed_password  
-    )
+        hashed_password = pwd_context.hash(user.password) 
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+        new_user = User(
+            first_name=user.first_name,
+            last_name=user.last_name,
+            username=user.username,
+            email=user.email,
+            birthdate=user.birthdate,
+            gender=user.gender,
+            phone_number=user.phone_number,
+            password_hash=hashed_password  
+        )
 
-    return {"message": "User registered successfully"}
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return {"message": "User registered successfully"}
+
+    except Exception as e:
+        print(f"❌ Error in register_user: {e}")  # ✅ הדפסת השגיאה האמיתית
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/recipes/{recipe_id}/comments/{comment_id}/reply")
 async def reply_to_comment(
@@ -638,17 +658,17 @@ async def get_users(db: Session = Depends(get_db)):
     ]
 
 
-@app.get("/users/me", response_model=None)  # ✅ אין צורך להגדיר Response Model
+@app.get("/users/me", response_model=None)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)), 
     db: Session = Depends(get_db)
 ):
     if not credentials or not credentials.credentials:
         print("❌ No Authorization Header received!")
-        raise HTTPException(status_code=422, detail="Missing Authorization Header")
+        return {"message": "No token provided"}  # ✅ במקום לקרוס, מחזירים הודעה
 
     token = credentials.credentials
-    print(f"🔹 Received Token: {token}")  # ✅ לוודא שהטוקן מתקבל
+    print(f"🔹 Received Token: {token}")  # ✅ הדפסת הטוקן
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -664,15 +684,19 @@ async def get_current_user(
             print("❌ User not found")
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        return {"id": user.id, "username": user.username, "email": user.email}  # ✅ JSON תקין
+        return {"id": user.id, "username": user.username, "email": user.email}
 
     except jwt.ExpiredSignatureError:
         print("❌ Token expired")
-        raise HTTPException(status_code=401, detail="Token expired")
+        return {"message": "Token expired"}  # ✅ במקום לקרוס, מחזירים הודעה
 
-    except jwt.JWTError:
-        print("❌ Invalid token format")
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except jwt.JWTError as e:
+        print(f"❌ Invalid token format: {e}")  # ✅ הדפסת השגיאה
+        return {"message": "Invalid token"}
+
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}")  # ✅ הדפסת כל שגיאה אחרת
+        return {"message": "Internal server error"}
     
     
 @app.get("/users/{user_id}/recipes")
