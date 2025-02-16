@@ -27,6 +27,8 @@ export default function RecipeDetails() {
   const [scaledIngredients, setScaledIngredients] = useState([]);
   const [scaledNutrition, setScaledNutrition] = useState({});
   const [originalNutrition, setOriginalNutrition] = useState(null)
+  const [originalIngredients, setOriginalIngredients] = useState(null);
+
 
 
   useEffect(() => {
@@ -42,10 +44,12 @@ export default function RecipeDetails() {
       if (!response.ok) throw new Error(`שגיאה בקבלת המתכון. סטטוס: ${response.status}`);
       const data = await response.json();
   
-      console.log("📥 נתוני מתכון שהתקבלו:", data);  // ✅ בודק אם יש טיימרים
+      console.log("📥 נתוני מתכון שהתקבלו:", data); 
       setRecipe(data);
       setServings(data.servings);
       setScaledNutrition(data.nutritional_info);
+      setOriginalIngredients(data.ingredients); 
+      setScaledIngredients(data.ingredients);
       setRating(data.rating || 0.0);
       setLoading(false);
     } catch (error) {
@@ -234,15 +238,15 @@ const formatTime = (seconds) => {
 };
 
   // ✅ בקשה ל-API כדי לקבל את הכמויות המעודכנות
-  const fetchScaledIngredients = async (newServings) => {
-    try {
-      const response = await fetch(`/api/recipes/${id}/scale?servings=${newServings}`);
-      if (!response.ok) throw new Error("שגיאה בחישוב כמויות.");
-      const data = await response.json();
-      setScaledIngredients(data.scaled_ingredients);
-    } catch (error) {
-      console.error("❌ שגיאה בקבלת חישוב כמויות:", error);
-    }
+  const scaleIngredients = (newServings) => {
+    if (!originalIngredients || !recipe) return;
+    const factor = newServings / recipe.servings;
+    setScaledIngredients(
+      originalIngredients.map((ingredient) => ({
+        ...ingredient,
+        quantity: (ingredient.quantity * factor).toFixed(2),
+      }))
+    );
   };
 
   // ✅ חישוב ערכים תזונתיים באופן מקומי לפי כמות המנות
@@ -261,9 +265,10 @@ const formatTime = (seconds) => {
   const handleServingsChange = (e) => {
     const newServings = parseInt(e.target.value);
     setServings(newServings);
-    fetchScaledIngredients(newServings);
-    getScaledNutrition(newServings);
+    scaleIngredients(newServings); // ✅ שינוי הכמויות של המרכיבים
+    getScaledNutrition(newServings); // ✅ עדכון הערכים התזונתיים
   };
+  
 
 if (!recipe) return <p className="text-center mt-10">🔄 טוען מתכון...</p>;
 if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;
@@ -387,10 +392,10 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
         <div>
           <h2 className="text-2xl font-bold">🥦 מרכיבים</h2>
           <ul className="mt-4 list-disc pl-5">
-          {scaledIngredients.length > 0 ? (
-            scaledIngredients.map((ingredient, index) => (
+        {scaledIngredients ? (
+          scaledIngredients.map((ingredient, index) => (
             <li key={index}>
-              {ingredient.name} - {ingredient.quantity} {ingredient.unit}{" "}
+              {ingredient.name} - {ingredient.quantity} {ingredient.unit}
               <button onClick={() => handleFindSubstitute(ingredient.name)}>
                 🔄 מצא תחליף
               </button>
