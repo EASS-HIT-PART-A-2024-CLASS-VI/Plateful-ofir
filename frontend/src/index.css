@@ -64,11 +64,8 @@ button {
   padding: 10px 20px;
   font-size: 1em;
   font-weight: 500;
-  background-color: #4656e7;
-  color: white;
+  color: rgb(7, 7, 7);
   cursor: pointer;
   transition: 0.3s;
 }
-button:hover {
-  background-color: #3a46b4;
-}
+

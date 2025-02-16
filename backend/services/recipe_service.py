@@ -1,6 +1,6 @@
 from backend.services.ai_service import calculate_nutritional_info
 from sqlalchemy.orm import Session
-from models.recipe_model import Recipe, NutritionalInfo, Ingredient
+from models.recipe_model import CookingTimer, Recipe, NutritionalInfo, Ingredient
 from models.user_model import UserProfile
 from typing import List, Optional
 import redis

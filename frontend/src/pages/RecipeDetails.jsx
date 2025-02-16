@@ -154,30 +154,32 @@ export default function RecipeDetails() {
   const commentTree = buildCommentTree(comments);
 
 // 🔥 פונקציה להתחלת טיימר
-const startTimer = (stepNumber, duration) => {
-  // ✅ אם כבר יש טיימר - ננקה אותו ונפעיל חדש
+const startTimer = (stepNumber, durationInMinutes) => {
+  // ✅ אם כבר יש טיימר רץ, ננקה אותו
   if (activeTimers[`${stepNumber}_interval`]) {
-    clearInterval(activeTimers[`${stepNumber}_interval`]); // מניעת כפילות טיימרים
+    clearInterval(activeTimers[`${stepNumber}_interval`]);
   }
 
-  let remainingTime = duration;
+  let remainingTime = (activeTimers[stepNumber] > 0) ? activeTimers[stepNumber] : durationInMinutes * 60; // ✅ תמיכה בהמשך מטיימר מוקפא
   setActiveTimers((prev) => ({
     ...prev,
     [stepNumber]: remainingTime,
+    [`${stepNumber}_paused`]: false, // ✅ מסיר מצב הקפאה אם היה קיים
   }));
 
   const interval = setInterval(() => {
     setActiveTimers((prev) => {
+      if (prev[`${stepNumber}_paused`]) return prev; // ✅ לא מוריד זמן אם הטיימר מוקפא
+
       if (prev[stepNumber] <= 1) {  
         clearInterval(interval);
-        playBeepSound();  // ✅ השמעת צליל כשנגמר
+        playBeepSound(); // ✅ השמעת צליל בסוף הטיימר
         return { ...prev, [stepNumber]: 0, [`${stepNumber}_interval`]: null };
       }
       return { ...prev, [stepNumber]: prev[stepNumber] - 1 };
     });
   }, 1000);
 
-  // ✅ שמירת מזהה הטיימר כדי לנקות אותו בעת הפעלה מחדש
   setActiveTimers((prev) => ({
     ...prev,
     [`${stepNumber}_interval`]: interval,
@@ -190,14 +192,41 @@ const playBeepSound = () => {
   audio.play().catch((error) => console.error("❌ שגיאה בהפעלת צליל:", error));
 };
 
+// ✅ פונקציה להקפאת הטיימר
+const pauseTimer = (stepNumber) => {
+  if (activeTimers[`${stepNumber}_paused`]) {
+    // ✅ חידוש הטיימר שהופסק
+    startTimer(stepNumber, activeTimers[stepNumber] / 60);  
+  } else {
+    // ✅ עצירת הטיימר
+    clearInterval(activeTimers[`${stepNumber}_interval`]);
+    setActiveTimers((prev) => ({
+      ...prev,
+      [`${stepNumber}_paused`]: true, // ✅ סימון כטיימר מוקפא
+    }));
+  }
+};
 
-// ✅ פונקציה לאיפוס והפעלה מחדש של טיימר
-const resetTimer = (stepNumber) => {
+// ✅ פונקציה לעצירת הטיימר
+const stopTimer = (stepNumber) => {
   if (activeTimers[`${stepNumber}_interval`]) {
     clearInterval(activeTimers[`${stepNumber}_interval`]);
   }
-  startTimer(stepNumber, activeTimers[`${stepNumber}_time`] || 10); // ברירת מחדל 10 שניות
+  setActiveTimers((prev) => ({
+    ...prev,
+    [stepNumber]: 0,
+    [`${stepNumber}_interval`]: null,
+    [`${stepNumber}_paused`]: false,
+  }));
 };
+
+// ✅ פורמט להצגת זמן בשניות כ-`MM:SS`
+const formatTime = (seconds) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
+};
+
 
 
   const handleRateRecipe = async (score) => {
@@ -328,33 +357,51 @@ const resetTimer = (stepNumber) => {
         </div>
 
         <div>
-  <h2 className="text-2xl font-bold">📜 שלבי הכנה</h2>
-  <ul className="mt-4 space-y-4">
-    {recipe.preparation_steps.split("\n").map((step, index) => {
-      const stepNumber = index + 1;
-      const timer = recipe.timers?.find((t) => t.step_number === stepNumber);
+      <h2 className="text-2xl font-bold">📜 שלבי הכנה</h2>
+      <ul className="mt-4 space-y-4">
+        {recipe.preparation_steps.split("\n").map((step, index) => {
+          const stepNumber = index + 1;
+          const timer = recipe.timers?.find((t) => t.step_number === stepNumber);
 
-      return (
-        <li key={index} className="text-lg flex items-center gap-4">
-          {step}
-          {timer && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => startTimer(stepNumber, timer.duration)}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-              >
-                {activeTimers[stepNumber] > 0
-                  ? `⏳ ${activeTimers[stepNumber]} שניות`
-                  : `⏳ הפעל טיימר (${timer.duration} שניות)`}
-              </button>
+          return (
+            <li key={index} className="text-lg flex items-center gap-4">
+              {step}
+              {timer && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => startTimer(stepNumber, timer.duration)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                  >
+                    {activeTimers[stepNumber] > 0
+                      ? `⏳ ${formatTime(activeTimers[stepNumber])}`
+                      : `⏳ הפעל טיימר (${timer.duration} דקות)`}
+                  </button>
 
-              {activeTimers[stepNumber] === 0 && (
-                <button
-                  onClick={() => startTimer(stepNumber, timer.duration)}
-                  className="bg-green-500 text-white px-2 py-1 rounded ml-2"
-                >
-                  🔄 הפעל מחדש
-                </button>
+                  {activeTimers[stepNumber] > 0 && (
+                    <>
+                      <button
+                        onClick={() => pauseTimer(stepNumber)}
+                        className="pause_play_button"
+                      >
+                        {activeTimers[`${stepNumber}_paused`] ? "▶️ " : "⏸️ "}
+                      </button>
+
+                      <button
+                        onClick={() => stopTimer(stepNumber)}
+                        className="stop_button"
+                      >
+                        ⏹️ 
+                      </button>
+                    </>
+                  )}
+
+                  {activeTimers[stepNumber] === 0 && (
+                    <button
+                      onClick={() => startTimer(stepNumber, timer.duration)}
+                      className="play_again_button"
+                    >
+                      🔄 
+                    </button>
               )}
             </div>
           )}

@@ -75,7 +75,8 @@ export default function CreateRecipe({ fetchUserRecipes }) {
       ...ing,
       quantity: parseFloat(ing.quantity)
     }))));
-  
+
+  formData.append("timers", JSON.stringify(formattedTimers));
     console.log("📤 Sending Recipe Data:", Object.fromEntries(formData));
   
     if (image) formData.append("image", image); // מוודא שהתמונה נשלחת אם הועלתה

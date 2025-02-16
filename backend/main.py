@@ -524,7 +524,7 @@ async def add_timer(recipe_id: int, step_number: int = Form(...), duration: int 
 
     new_timer = CookingTimer(recipe_id=recipe_id, step_number=step_number, duration=duration, label=label)
     db.add(new_timer)
-    db.commit()  # ✅ ודאי שמבוצע commit!
+    db.commit() 
     db.refresh(new_timer)
 
     return {"message": "Timer added successfully", "timer": new_timer}
