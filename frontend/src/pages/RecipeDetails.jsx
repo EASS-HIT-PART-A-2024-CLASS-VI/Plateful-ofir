@@ -23,6 +23,10 @@ export default function RecipeDetails() {
   const [activeTimers, setActiveTimers] = useState({});
   const [isChatOpen, setIsChatOpen] = useState(false);
   const chatDrawerRef = useRef(null);
+  const [servings, setServings] = useState(null); 
+  const [scaledIngredients, setScaledIngredients] = useState([]);
+  const [scaledNutrition, setScaledNutrition] = useState({});
+  const [originalNutrition, setOriginalNutrition] = useState(null)
 
 
   useEffect(() => {
@@ -40,6 +44,8 @@ export default function RecipeDetails() {
   
       console.log("📥 נתוני מתכון שהתקבלו:", data);  // ✅ בודק אם יש טיימרים
       setRecipe(data);
+      setServings(data.servings);
+      setScaledNutrition(data.nutritional_info);
       setRating(data.rating || 0.0);
       setLoading(false);
     } catch (error) {
@@ -227,7 +233,40 @@ const formatTime = (seconds) => {
   return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
 };
 
+  // ✅ בקשה ל-API כדי לקבל את הכמויות המעודכנות
+  const fetchScaledIngredients = async (newServings) => {
+    try {
+      const response = await fetch(`/api/recipes/${id}/scale?servings=${newServings}`);
+      if (!response.ok) throw new Error("שגיאה בחישוב כמויות.");
+      const data = await response.json();
+      setScaledIngredients(data.scaled_ingredients);
+    } catch (error) {
+      console.error("❌ שגיאה בקבלת חישוב כמויות:", error);
+    }
+  };
 
+  // ✅ חישוב ערכים תזונתיים באופן מקומי לפי כמות המנות
+  const getScaledNutrition = (newServings) => {
+    if (!recipe || !recipe.nutritional_info) return;
+    const factor = newServings / recipe.servings;
+    setScaledNutrition({
+      calories: (recipe.nutritional_info.calories * factor).toFixed(1),
+      protein: (recipe.nutritional_info.protein * factor).toFixed(1),
+      carbs: (recipe.nutritional_info.carbs * factor).toFixed(1),
+      fats: (recipe.nutritional_info.fats * factor).toFixed(1),
+    });
+  };
+
+  // ✅ שינוי מספר מנות – מבצע חישוב חדש מול השרת
+  const handleServingsChange = (e) => {
+    const newServings = parseInt(e.target.value);
+    setServings(newServings);
+    fetchScaledIngredients(newServings);
+    getScaledNutrition(newServings);
+  };
+
+if (!recipe) return <p className="text-center mt-10">🔄 טוען מתכון...</p>;
+if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;
 
   const handleRateRecipe = async (score) => {
     if (!recipe) return;
@@ -320,7 +359,10 @@ const formatTime = (seconds) => {
 
           <div className="flex items-center gap-4 mt-4">
             <p className="text-lg">⏳ {recipe.cooking_time} דקות</p>
-            <p className="text-lg">🍽 {recipe.servings} מנות</p>
+            <div className="flex items-center gap-4 mt-4">
+            <label className="text-lg">🍽 מספר מנות:</label>
+            <input type="number" min="1" value={servings || ""} onChange={handleServingsChange} className="border px-2 py-1 rounded w-20"/>
+          </div>
           </div>
         </div>
       </div>
@@ -328,15 +370,15 @@ const formatTime = (seconds) => {
       {/* ערכים תזונתיים */}
       <h3 className="text-2xl font-semibold text-gray-800 mb-3">ערכים תזונתיים</h3>
       <div className="grid grid-cols-3 gap-4">
-        {recipe.nutritional_info ? (
-          Object.entries(recipe.nutritional_info).map(([key, value], index) => (
+        {scaledNutrition ? (
+          Object.entries(scaledNutrition).map(([key, value], index) => (
             <div key={index} className="p-3 bg-gray-100 text-center rounded-lg">
               <span className="block text-lg font-bold text-gray-800">{value}</span>
               <span className="text-gray-500 text-sm">{key}</span>
             </div>
           ))
         ) : (
-          <p className="text-gray-500">No nutritional info available.</p>
+          <p className="text-gray-500">🔄 מחשב ערכים תזונתיים...</p>
         )}
       </div>
 
@@ -345,14 +387,18 @@ const formatTime = (seconds) => {
         <div>
           <h2 className="text-2xl font-bold">🥦 מרכיבים</h2>
           <ul className="mt-4 list-disc pl-5">
-            {recipe.ingredients.map((ingredient) => (
-            <li key={ingredient.id}>
+          {scaledIngredients.length > 0 ? (
+            scaledIngredients.map((ingredient, index) => (
+            <li key={index}>
               {ingredient.name} - {ingredient.quantity} {ingredient.unit}{" "}
               <button onClick={() => handleFindSubstitute(ingredient.name)}>
                 🔄 מצא תחליף
               </button>
             </li>
-          ))}
+          ))): (
+            <p>אין מרכיבים</p>
+            )
+            }
           </ul>
         </div>
 
