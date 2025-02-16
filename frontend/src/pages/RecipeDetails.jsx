@@ -5,10 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import ChatDrawer from "../components/ChatDrawer";
 import RatingStars from "../components/RatingStars";
 import CommentItem from "../components/CommentItem";
-import "../App.css";
-
-
-
+import beepSound from "../assets/beep.wav";
 
 export default function RecipeDetails() {
   const { id } = useParams();
@@ -37,9 +34,11 @@ export default function RecipeDetails() {
 
   const fetchRecipe = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/recipes/${id}`);
+      const response = await fetch(`/api/recipes/${id}`);
       if (!response.ok) throw new Error(`שגיאה בקבלת המתכון. סטטוס: ${response.status}`);
       const data = await response.json();
+  
+      console.log("📥 נתוני מתכון שהתקבלו:", data);  // ✅ בודק אם יש טיימרים
       setRecipe(data);
       setRating(data.rating || 0.0);
       setLoading(false);
@@ -53,7 +52,7 @@ export default function RecipeDetails() {
   const fetchComments = async () => {
     try {
       if (!id) return;
-      const response = await fetch(`http://localhost:8000/recipes/${id}/comments`);
+      const response = await fetch(`/api/recipes/${id}/comments`);
       if (!response.ok) throw new Error("שגיאה בשליפת תגובות");
       const data = await response.json();
       setComments(data);
@@ -71,7 +70,7 @@ export default function RecipeDetails() {
         alert("לא ניתן לשלוח תגובה ריקה");
         return;
       }
-      const response = await fetch(`http://localhost:8000/recipes/${id}/comment`, {
+      const response = await fetch(`/api/recipes/${id}/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -111,7 +110,7 @@ export default function RecipeDetails() {
     console.log("📤 שולח תגובת reply:", payload); // ✅ הדפסת הנתונים שנשלחים לשרת
   
     try {
-      const response = await fetch(`http://localhost:8000/recipes/${id}/comments/${parentCommentId}/reply`, {
+      const response = await fetch(`/api/recipes/${id}/comments/${parentCommentId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -154,29 +153,52 @@ export default function RecipeDetails() {
 
   const commentTree = buildCommentTree(comments);
 
-        // 🔥 פונקציה להתחלת טיימר
-    const startTimer = (stepNumber, duration) => {
-        if (timers[stepNumber]) return; // אם כבר רץ טיימר, לא מפעילים מחדש
-        let remainingTime = duration;
+// 🔥 פונקציה להתחלת טיימר
+const startTimer = (stepNumber, duration) => {
+  // ✅ אם כבר יש טיימר - ננקה אותו ונפעיל חדש
+  if (activeTimers[`${stepNumber}_interval`]) {
+    clearInterval(activeTimers[`${stepNumber}_interval`]); // מניעת כפילות טיימרים
+  }
 
-        const interval = setInterval(() => {
-        setTimers((prev) => ({
-            ...prev,
-            [stepNumber]: remainingTime,
-        }));
+  let remainingTime = duration;
+  setActiveTimers((prev) => ({
+    ...prev,
+    [stepNumber]: remainingTime,
+  }));
 
-        if (remainingTime <= 0) {
-            clearInterval(interval);
-            toast.success(`🚀 טיימר של שלב ${stepNumber} הסתיים!`);
-        }
-        remainingTime--;
-        }, 1000);
+  const interval = setInterval(() => {
+    setActiveTimers((prev) => {
+      if (prev[stepNumber] <= 1) {  
+        clearInterval(interval);
+        playBeepSound();  // ✅ השמעת צליל כשנגמר
+        return { ...prev, [stepNumber]: 0, [`${stepNumber}_interval`]: null };
+      }
+      return { ...prev, [stepNumber]: prev[stepNumber] - 1 };
+    });
+  }, 1000);
 
-        setTimers((prev) => ({
-        ...prev,
-        [stepNumber]: duration,
-        }));
-    };
+  // ✅ שמירת מזהה הטיימר כדי לנקות אותו בעת הפעלה מחדש
+  setActiveTimers((prev) => ({
+    ...prev,
+    [`${stepNumber}_interval`]: interval,
+  }));
+};
+
+// ✅ פונקציה להפעלת צליל בסיום טיימר
+const playBeepSound = () => {
+  const audio = new Audio(beepSound);
+  audio.play().catch((error) => console.error("❌ שגיאה בהפעלת צליל:", error));
+};
+
+
+// ✅ פונקציה לאיפוס והפעלה מחדש של טיימר
+const resetTimer = (stepNumber) => {
+  if (activeTimers[`${stepNumber}_interval`]) {
+    clearInterval(activeTimers[`${stepNumber}_interval`]);
+  }
+  startTimer(stepNumber, activeTimers[`${stepNumber}_time`] || 10); // ברירת מחדל 10 שניות
+};
+
 
   const handleRateRecipe = async (score) => {
     if (!recipe) return;
@@ -186,7 +208,7 @@ export default function RecipeDetails() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8000/recipes/${recipe.id}/rate/`, {
+      const response = await fetch(`/api/recipes/${recipe.id}/rate/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: parseInt(userId), score })
@@ -221,7 +243,7 @@ export default function RecipeDetails() {
 
     try {
       // שולחים בקשה לשרת
-      const response = await fetch("http://localhost:8000/ingredient_substitution", {
+      const response = await fetch("/api/ingredient_substitution", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ingredients: [ingredientName] }),
@@ -258,7 +280,7 @@ export default function RecipeDetails() {
       <div className="flex flex-col md:flex-row items-start gap-8">
         {/* תמונת מתכון */}
         <div className="w-full md:w-1/2">
-          <img src={`http://localhost:8000${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
+          <img src={`/api${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
         </div>
 
         {/* פרטי מתכון */}
@@ -306,31 +328,44 @@ export default function RecipeDetails() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-bold">📜 שלבי הכנה</h2>
-          <ul className="mt-4 space-y-4">
-            {recipe.preparation_steps.split("\n").map((step, index) => {
-              const stepNumber = index + 1;
-              const timer = timers.find(t => t.step_number === stepNumber);
-              return (
-                <li key={index} className="text-lg flex items-center gap-4">
-                  {step}
-                  {timer && (
-                    <button
-                      onClick={() => startTimer(stepNumber, timer.duration)}
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-                    >
-                      {activeTimers[stepNumber] ? `⏳ ${activeTimers[stepNumber]}s` : `⏳ הפעל טיימר (${timer.duration}s)`}
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
-      <div>
-      {/* 🔹 אזור התגובות */}
-      <div className="comments-container">
+  <h2 className="text-2xl font-bold">📜 שלבי הכנה</h2>
+  <ul className="mt-4 space-y-4">
+    {recipe.preparation_steps.split("\n").map((step, index) => {
+      const stepNumber = index + 1;
+      const timer = recipe.timers?.find((t) => t.step_number === stepNumber);
+
+      return (
+        <li key={index} className="text-lg flex items-center gap-4">
+          {step}
+          {timer && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => startTimer(stepNumber, timer.duration)}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+              >
+                {activeTimers[stepNumber] > 0
+                  ? `⏳ ${activeTimers[stepNumber]} שניות`
+                  : `⏳ הפעל טיימר (${timer.duration} שניות)`}
+              </button>
+
+              {activeTimers[stepNumber] === 0 && (
+                <button
+                  onClick={() => startTimer(stepNumber, timer.duration)}
+                  className="bg-green-500 text-white px-2 py-1 rounded ml-2"
+                >
+                  🔄 הפעל מחדש
+                </button>
+              )}
+            </div>
+          )}
+        </li>
+      );
+    })}
+  </ul>
+</div>
+
+        {/* תגובות */}
+      <div className="mt-8 bg-gray-100 p-6 rounded-lg">
         <h2 className="text-2xl font-bold mb-4">💬 תגובות</h2>
 
         {/* הצגת דירוג */}

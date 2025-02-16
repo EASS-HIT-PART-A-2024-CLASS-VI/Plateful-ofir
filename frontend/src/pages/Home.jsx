@@ -8,7 +8,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:8000/recipes/")
+    fetch("/api/recipes/")
       .then((response) => response.json())
       .then((data) => {
         setRecipes(data);
@@ -38,11 +38,11 @@ export default function Home() {
       {featuredRecipe && (
         <div className="relative mt-10 rounded-lg overflow-hidden shadow-lg">
             <img
-            src={featuredRecipe.image_url ? `http://localhost:8000${featuredRecipe.image_url}` : "http://localhost:8000/static/default-recipe.jpg"}
+            src={featuredRecipe.image_url ? `/api${featuredRecipe.image_url}` : "/api/static/default-recipe.jpg"}
             alt={featuredRecipe.name}
             className="w-full h-[600px] object-cover transition-all duration-300 hover:scale-105"
             onError={(e) => {
-                e.target.src = "http://localhost:8000/static/default-recipe.jpg"; // ✅ אם יש בעיה, נטען תמונת ברירת מחדל
+                e.target.src = "/api/static/default-recipe.jpg"; // ✅ אם יש בעיה, נטען תמונת ברירת מחדל
             }}
             />
           <div className="absolute bottom-10 left-10 bg-white bg-opacity-80 px-10 py-6 rounded-lg shadow-md">
@@ -75,11 +75,11 @@ export default function Home() {
         {recipes.map((recipe) => (
           <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="block rounded-lg shadow-md overflow-hidden bg-white hover:shadow-xl transition transform hover:scale-105 duration-200">
             <img
-            src={featuredRecipe.image_url ? `http://localhost:8000${featuredRecipe.image_url}` : "http://localhost:8000/static/default-recipe.jpg"}
+            src={featuredRecipe.image_url ? `/api${featuredRecipe.image_url}` : "/api/static/default-recipe.jpg"}
             alt={featuredRecipe.name}
             className="w-full h-[600px] object-cover transition-all duration-300 hover:scale-105"
             onError={(e) => {
-                e.target.src = "http://localhost:8000/static/default-recipe.jpg"; // ✅ אם יש בעיה, נטען תמונת ברירת מחדל
+                e.target.src = "/api/static/default-recipe.jpg"; // ✅ אם יש בעיה, נטען תמונת ברירת מחדל
             }}
             />
             <div className="p-5">

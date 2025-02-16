@@ -59,6 +59,13 @@ export default function CreateRecipe({ fetchUserRecipes }) {
       return;
     }
   
+
+  const formattedTimers = timers.map(timer => ({
+      step_number: parseInt(timer.step_number, 10),  // ✅ להמיר למספר
+      duration: parseInt(timer.duration, 10),  // ✅ להמיר למספר
+      label: timer.label
+  }));
+
     const formData = new FormData();
     Object.entries(newRecipe).forEach(([key, value]) => {
       formData.append(key, typeof value === "number" ? value.toString() : value);
@@ -74,7 +81,7 @@ export default function CreateRecipe({ fetchUserRecipes }) {
     if (image) formData.append("image", image); // מוודא שהתמונה נשלחת אם הועלתה
   
     try {
-      const response = await fetch("http://localhost:8000/recipes/", {
+      const response = await fetch("/api/recipes/", {
         method: "POST",
         body: formData,
       });

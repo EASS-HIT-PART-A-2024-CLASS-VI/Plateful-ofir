@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials,OAuth2PasswordBearer
 
 from models.security import verify_password, create_access_token
-import jwt
+from jose import JWTError, jwt 
 import json
 import shutil
 import os
@@ -41,10 +41,11 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["http://localhost:3000", "http://localhost:8000", "http://127.0.0.1:3000", "http://127.0.0.1:8000"],
     allow_credentials=True,
-    allow_methods=["*"], 
-    allow_headers=["*"],  
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -120,8 +121,14 @@ class RecipeCreate(BaseModel):
 
 class UserRegister(BaseModel):
     username: str
-    email: str
+    first_name: str  
+    last_name: str   
+    email: EmailStr
     password: str
+    birthdate: Optional[str] = None 
+    gender: Optional[str] = None
+    phone_number: Optional[str] = None
+
 
 class UserLogin(BaseModel):
     email: str
@@ -160,6 +167,7 @@ async def create_recipe(
     tags: str = Form(...),
     creator_id: str = Form(...),
     ingredients: str = Form(...),
+    timers: Optional[str] = Form("[]"),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
@@ -170,6 +178,8 @@ async def create_recipe(
         raise HTTPException(status_code=400, detail="Invalid creator_id or servings")
 
     ingredients_list = json.loads(ingredients)
+    timers_list = json.loads(timers)
+    print("📥 טיימרים שהתקבלו:", timers_list) 
 
     # ✅ שמירת תמונה עם נתיב ברירת מחדל
     image_url = "/static/default-recipe.jpg"
@@ -225,6 +235,16 @@ async def create_recipe(
         db.add(new_nutritional_info)
         db.commit()
         db.refresh(new_nutritional_info)
+        
+    for timer in timers_list:
+        new_timer = CookingTimer(
+            recipe_id=new_recipe.id,
+            step_number=timer["step_number"],
+            duration=timer["duration"],
+            label=timer.get("label", f"שלב {timer['step_number']}")  
+        )
+        db.add(new_timer)
+    db.commit()
 
     return {
         "message": "Recipe created successfully",
@@ -277,10 +297,14 @@ async def get_recipes(
                 "protein": r.nutritional_info.protein if r.nutritional_info else 0,
                 "carbs": r.nutritional_info.carbs if r.nutritional_info else 0,
                 "fats": r.nutritional_info.fats if r.nutritional_info else 0,
-            } if r.nutritional_info else None  
+            } if r.nutritional_info else None,  # ✅ הוספת פסיק אחרי הבלוק של nutritional_info
+            "timers": [
+                {"step_number": timer.step_number, "duration": timer.duration, "label": timer.label}
+                for timer in db.query(CookingTimer).filter(CookingTimer.recipe_id == r.id).all()
+            ]
         }
         for r in recipes
-    ]
+    ]    
 
 
 @app.get("/recipes/{recipe_id}")
@@ -332,6 +356,8 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
 
     }
 
+import json
+
 @app.put("/recipes/{recipe_id}")
 async def update_recipe(
     recipe_id: int,
@@ -342,10 +368,18 @@ async def update_recipe(
     categories: str = Form(...),
     tags: str = Form(...),
     ingredients: str = Form(...),
+    timers: Optional[str] = Form("[]"),  # 🛠 לוודא שזו מחרוזת JSON תקינה
     current_user_id: str = Form(...),
-    image: Optional[UploadFile] = File(None),  # ✅ קבלת תמונה אם נשלחה
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
+    try:
+        timers_list = json.loads(timers)  # ניסיון להמיר JSON
+        print(f"📥 טיימרים שהתקבלו (Parsed JSON): {timers_list}")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"❌ JSON לא תקין: {str(e)}")
+
+    # 🛠 שלב 1: לוודא שהמתכון קיים
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
@@ -353,22 +387,18 @@ async def update_recipe(
     if str(recipe.creator_id) != current_user_id:
         raise HTTPException(status_code=403, detail="You do not have permission to edit this recipe")
 
-    # ✅ אם הועלתה תמונה חדשה, שמירתה ועדכון `image_url`
+    # ✅ אם יש תמונה חדשה, שמור אותה
     if image:
         image_filename = f"{recipe_id}_{os.urandom(8).hex()}.{image.filename.split('.')[-1]}"
         image_path = os.path.join("static", image_filename)
-
-        # ✅ שמירת התמונה החדשה
         with open(image_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
 
-        # ❌ מחיקת התמונה הישנה אם היא לא תמונת ברירת מחדל
         if recipe.image_url and recipe.image_url != "/static/default-recipe.jpg":
             old_image_path = recipe.image_url.replace("/static/", "static/")
             if os.path.exists(old_image_path):
                 os.remove(old_image_path)
 
-        # ✅ עדכון URL של התמונה
         recipe.image_url = f"/static/{image_filename}"
 
     # ✅ עדכון נתוני המתכון
@@ -390,13 +420,41 @@ async def update_recipe(
             recipe_id=recipe.id
         )
         db.add(new_ingredient)
+    
+    db.commit()
+    
+    # 🛠 שלב 2: מחיקת טיימרים ישנים ושמירת חדשים
+    print(f"📢 מחיקת טיימרים ישנים למתכון ID {recipe.id}")
+    db.query(CookingTimer).filter(CookingTimer.recipe_id == recipe.id).delete()
+    db.commit()
+
+    print("📥 טיימרים שמורים:", timers_list) 
+    for timer in timers_list:
+        try:
+            step_number = int(timer["step_number"])
+            duration = int(timer["duration"])
+            label = timer.get("label", f"שלב {step_number}")
+
+            print(f"⏳ שמירת טיימר: שלב {step_number}, זמן {duration}, תיאור: {label}")
+
+            new_timer = CookingTimer(
+                recipe_id=recipe.id,
+                step_number=step_number,
+                duration=duration,
+                label=label
+            )
+            db.add(new_timer)
+
+        except (ValueError, KeyError, TypeError) as e:
+            print(f"❌ שגיאה בהמרת טיימר: {timer}, שגיאה: {e}")
 
     db.commit()
 
     return {
         "message": "Recipe updated successfully",
-        "image_url": recipe.image_url  # ✅ מחזיר את ה-URL המעודכן של התמונה
+        "image_url": recipe.image_url  
     }
+
 
 
 @app.get("/recipes/{recipe_id}/scale")
@@ -553,25 +611,38 @@ async def get_comments(recipe_id: int, db: Session = Depends(get_db)):
     ]
 
 # User endpoints
-@app.post("/register", include_in_schema=True)  # ✅ אין `/` בסוף הנתיב
+@app.post("/register", include_in_schema=True)
 async def register_user(user: UserRegister, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    try:
+        print("📥 Data received:", user.dict())  # ✅ הדפסת הנתונים שמתקבלים
 
-    hashed_password = pwd_context.hash(user.password) 
+        existing_user = db.query(User).filter(User.email == user.email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
 
-    new_user = User(
-        username=user.username,
-        email=user.email,
-        password_hash=hashed_password  
-    )
+        hashed_password = pwd_context.hash(user.password) 
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+        new_user = User(
+            first_name=user.first_name,
+            last_name=user.last_name,
+            username=user.username,
+            email=user.email,
+            birthdate=user.birthdate,
+            gender=user.gender,
+            phone_number=user.phone_number,
+            password_hash=hashed_password  
+        )
 
-    return {"message": "User registered successfully"}
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return {"message": "User registered successfully"}
+
+    except Exception as e:
+        print(f"❌ Error in register_user: {e}")  # ✅ הדפסת השגיאה האמיתית
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/recipes/{recipe_id}/comments/{comment_id}/reply")
 async def reply_to_comment(
@@ -647,17 +718,17 @@ async def get_users(db: Session = Depends(get_db)):
     ]
 
 
-@app.get("/users/me", response_model=None)  # ✅ אין צורך להגדיר Response Model
+@app.get("/users/me", response_model=None)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)), 
     db: Session = Depends(get_db)
 ):
     if not credentials or not credentials.credentials:
         print("❌ No Authorization Header received!")
-        raise HTTPException(status_code=422, detail="Missing Authorization Header")
+        return {"message": "No token provided"}  # ✅ במקום לקרוס, מחזירים הודעה
 
     token = credentials.credentials
-    print(f"🔹 Received Token: {token}")  # ✅ לוודא שהטוקן מתקבל
+    print(f"🔹 Received Token: {token}")  # ✅ הדפסת הטוקן
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -673,15 +744,19 @@ async def get_current_user(
             print("❌ User not found")
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        return {"id": user.id, "username": user.username, "email": user.email}  # ✅ JSON תקין
+        return {"id": user.id, "username": user.username, "email": user.email}
 
     except jwt.ExpiredSignatureError:
         print("❌ Token expired")
-        raise HTTPException(status_code=401, detail="Token expired")
+        return {"message": "Token expired"}  # ✅ במקום לקרוס, מחזירים הודעה
 
-    except jwt.JWTError:
-        print("❌ Invalid token format")
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except jwt.JWTError as e:
+        print(f"❌ Invalid token format: {e}")  # ✅ הדפסת השגיאה
+        return {"message": "Invalid token"}
+
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}")  # ✅ הדפסת כל שגיאה אחרת
+        return {"message": "Internal server error"}
     
     
 @app.get("/users/{user_id}/recipes")

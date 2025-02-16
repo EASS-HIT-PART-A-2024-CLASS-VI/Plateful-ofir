@@ -20,7 +20,7 @@ export default function UserDashboard() {
 
   const fetchUserRecipes = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/users/${user.id}/recipes`, {
+      const response = await fetch(`/api/users/${user.id}/recipes`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("authToken")}`
         }
@@ -39,7 +39,7 @@ export default function UserDashboard() {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/users/${user.id}/notifications`, {
+      const response = await fetch(`/api/users/${user.id}/notifications`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("authToken")}`
         }
@@ -64,7 +64,7 @@ export default function UserDashboard() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">שלום, {user?.username}!</h2>
+      <h2 className="text-3xl font-bold mb-6">  שלום, {user?.first_name} {user?.last_name}!</h2>
 
       {/* Notifications Section */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">

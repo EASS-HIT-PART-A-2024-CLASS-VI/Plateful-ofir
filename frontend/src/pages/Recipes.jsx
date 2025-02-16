@@ -11,7 +11,7 @@ export default function Recipes() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:8000/recipes/")
+    fetch("/api/recipes/")
       .then((response) => response.json())
       .then((data) => {
         setRecipes(data);
@@ -92,11 +92,11 @@ export default function Recipes() {
     filteredRecipes.map((recipe) => (
       <li key={recipe.id} className="border p-4 rounded-lg shadow-lg bg-white">
         <img
-        src={`http://localhost:8000${recipe.image_url}`}
+        src={`/api${recipe.image_url}`}
         alt={recipe.name}
         className="w-full h-32 object-cover rounded-t-lg"
         onError={(e) => {
-            e.target.src = "http://localhost:8000/static/default-recipe.jpg"; // תמונת ברירת מחדל אם התמונה לא נטענת
+            e.target.src = "/api/static/default-recipe.jpg"; // תמונת ברירת מחדל אם התמונה לא נטענת
         }}
         />
 
