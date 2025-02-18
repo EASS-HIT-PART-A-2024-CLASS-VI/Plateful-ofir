@@ -1,6 +1,6 @@
 .typing-indicator {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     gap: 5px; /* רווח בין הנקודות */
   }

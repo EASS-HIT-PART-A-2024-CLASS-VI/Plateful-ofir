@@ -7,6 +7,7 @@ import RatingStars from "../components/RatingStars";
 import CommentItem from "../components/CommentItem";
 import ShoppingListPopup from "../components/ShoppingListPopup";
 import beepSound from "../assets/beep.wav";
+import { useChat } from '../context/ChatContext';
 
 export default function RecipeDetails() {
   const { id } = useParams();
@@ -28,6 +29,7 @@ export default function RecipeDetails() {
   const [scaledNutrition, setScaledNutrition] = useState({});
   const [originalIngredients, setOriginalIngredients] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { openChat } = useChat();
 
 
   useEffect(() => {
@@ -311,6 +313,7 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
     // 1. פותחים את הצ'אט
     setIsChatOpen(true);
 
+
     // 2. מפעילים את האנימציה "typing..." ע"י setLoading(true) בצ'אט
     if (chatDrawerRef.current) {
       chatDrawerRef.current.setLoading(true);
@@ -344,7 +347,6 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
       }
     }
   };
-  
 
   if (loading) return <p className="text-center mt-10 text-blue-500">טוען מתכון...</p>;
   if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;

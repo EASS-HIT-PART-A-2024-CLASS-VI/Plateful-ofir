@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify"; 
 import "react-toastify/dist/ReactToastify.css"; 
 import { UserProvider } from "./context/UserContext";
+import { ChatProvider } from './context/ChatContext';
 
 import SignUp from "./pages/SignUp";
 import Navbar from "./components/Navbar";
@@ -12,6 +13,7 @@ import Recipes from "./pages/Recipes";
 import RecipeDetails from "./pages/RecipeDetails";
 import UserDashboard from "./pages/UserDashboard"; 
 import EditRecipe from "./pages/EditRecipe"; 
+
 
 export default function App() {
   const [backendStatus, setBackendStatus] = useState("🔄 בודק חיבור ל-Backend...");
@@ -37,6 +39,7 @@ export default function App() {
 
   return (
     <UserProvider>
+      <ChatProvider>
       <Router>
         <div className="w-full">
           <ToastContainer position="top-center" autoClose={3000} />
@@ -52,6 +55,7 @@ export default function App() {
           </Routes>
         </div>
       </Router>
+      </ChatProvider>
     </UserProvider>
   );
 }

@@ -1,4 +1,4 @@
-// ChatDrawer.jsx
+
 import React, {
   useState,
   forwardRef,
@@ -39,7 +39,7 @@ const ChatDrawer = forwardRef(({ isOpen, onClose, title }, ref) => {
     setIsLoading(true); // כאן אנו מציגים את האנימציה
 
     try {
-      const response = await fetch("http://localhost:8000/chat", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: updatedChat }),
