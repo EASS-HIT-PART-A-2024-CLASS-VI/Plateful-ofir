@@ -478,22 +478,33 @@ async def scale_recipe(
     return {"scaled_ingredients": scaled_ingredients}
 
 @app.post("/recipes/{recipe_id}/share/{user_id}")
-async def share_recipe(
-    recipe_id: int,
-    user_id: int,
-    db: Session = Depends(get_db)
-    ):
+async def share_recipe(recipe_id: int, user_id: int, db: Session = Depends(get_db)):
+    """ שיתוף מתכון עם משתמש אחר """
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     user = db.query(User).filter(User.id == user_id).first()
-    
+
     if not recipe or not user:
         raise HTTPException(status_code=404, detail="Recipe or user not found")
 
+    # בדיקה אם המתכון כבר שותף עם המשתמש
+    existing_share = db.query(SharedRecipe).filter(
+        SharedRecipe.recipe_id == recipe_id,
+        SharedRecipe.user_id == user_id
+    ).first()
+
+    if existing_share:
+        raise HTTPException(status_code=400, detail="Recipe already shared with this user")
+
+    # יצירת השיתוף
     shared_recipe = SharedRecipe(recipe_id=recipe_id, user_id=user_id)
     db.add(shared_recipe)
     db.commit()
-    
+
+    # יצירת התראה למשתמש
+    create_notification(db, user_id, f"📢 {recipe.name} שותף איתך!", f"/recipes/{recipe_id}")
+
     return {"message": f"Recipe '{recipe.name}' shared successfully with user {user_id}"}
+
 
 @app.get("/shopping-list/{recipe_id}")
 async def get_shopping_list(recipe_id: int, servings: int = 1, db: Session = Depends(get_db)):
@@ -769,6 +780,44 @@ async def get_current_user(
         print(f"❌ Unexpected error: {e}")  # ✅ הדפסת כל שגיאה אחרת
         return {"message": "Internal server error"}
     
+@app.get("/users/find/{username}")
+async def find_user(username: str, db: Session = Depends(get_db)):
+    """ מחפש משתמש לפי שם משתמש ומחזיר את ה-ID שלו """
+    user = db.query(User).filter(User.username == username).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"user_id": user.id}
+
+@app.get("/users/{user_id}/shared_recipes")
+async def get_shared_recipes(user_id: int, db: Session = Depends(get_db)):
+    """ החזרת כל המתכונים שמשתמש קיבל בשיתוף (ללא שם המשתמש ששיתף) """
+    try:
+        shared_recipes = db.query(SharedRecipe).filter(SharedRecipe.user_id == user_id).all()
+
+        if not shared_recipes:
+            return []
+
+        result = []
+        for s in shared_recipes:
+            recipe = db.query(Recipe).filter(Recipe.id == s.recipe_id).first()
+
+            if recipe:
+                result.append({
+                    "recipe_id": recipe.id,
+                    "recipe_name": recipe.name,
+                    "recipe_image": recipe.image_url
+                })
+
+        return result
+
+    except Exception as e:
+        print(f"❌ Error fetching shared recipes: {e}")
+        raise HTTPException(status_code=500, detail="שגיאה בשרת בעת שליפת מתכונים משותפים")
+
+
+
     
 @app.get("/users/{user_id}/recipes")
 async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
@@ -802,25 +851,6 @@ async def mark_all_notifications_as_read(user_id: int, db: Session = Depends(get
     db.query(Notification).filter(Notification.user_id == user_id).update({"is_read": True})
     db.commit()
     return {"message": "All notifications marked as read"}
-
-
-@app.post("/recipes/{recipe_id}/share/{user_id}")
-async def share_recipe(recipe_id: int, user_id: int, db: Session = Depends(get_db)):
-    """ שיתוף מתכון עם משתמש אחר ויצירת התראה """
-    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-    user = db.query(User).filter(User.id == user_id).first()
-    
-    if not recipe or not user:
-        raise HTTPException(status_code=404, detail="Recipe or user not found")
-
-    shared_recipe = SharedRecipe(recipe_id=recipe_id, user_id=user_id)
-    db.add(shared_recipe)
-    db.commit()
-
-    # ✅ יצירת התראה למשתמש ששיתפו איתו את המתכון
-    create_notification(db, user_id, f"📢 {recipe.name} שותף איתך!", f"/recipes/{recipe_id}")
-
-    return {"message": f"Recipe '{recipe.name}' shared successfully with user {user_id}"}
 
 
 if __name__ == "__main__":

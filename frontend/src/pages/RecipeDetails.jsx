@@ -7,6 +7,7 @@ import RatingStars from "../components/RatingStars";
 import CommentItem from "../components/CommentItem";
 import ShoppingListPopup from "../components/ShoppingListPopup";
 import beepSound from "../assets/beep.wav";
+import shareIcon from "../assets/share-image.png";
 
 export default function RecipeDetails() {
   const { id } = useParams();
@@ -28,6 +29,8 @@ export default function RecipeDetails() {
   const [scaledNutrition, setScaledNutrition] = useState({});
   const [originalIngredients, setOriginalIngredients] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showShareInput, setShowShareInput] = useState(false);
+  const [shareUsername, setShareUsername] = useState("");
 
 
   useEffect(() => {
@@ -57,6 +60,8 @@ export default function RecipeDetails() {
       setLoading(false);
     }
   };
+
+  
 
   const fetchComments = async () => {
     try {
@@ -345,6 +350,39 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
     }
   };
   
+  const handleShareRecipe = async () => {
+    if (!shareUsername.trim()) {
+      alert("נא להזין שם משתמש לשיתוף!");
+      return;
+    }
+  
+    try {
+      // 🔹 חיפוש ה-User ID לפי שם המשתמש
+      const userResponse = await fetch(`/api/users/find/${shareUsername}`);
+      if (!userResponse.ok) throw new Error("המשתמש לא נמצא");
+  
+      const { user_id } = await userResponse.json(); 
+  
+      // 🔹 שליחת בקשת שיתוף עם ה-User ID שנמצא
+      const response = await fetch(`/api/recipes/${id}/share/${user_id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      if (!response.ok) {
+        throw new Error("שגיאה בשיתוף המתכון");
+      }
+  
+      alert(`✅ המתכון שותף בהצלחה עם ${shareUsername}!`);
+      setShowShareInput(false);
+      setShareUsername("");
+  
+    } catch (error) {
+      console.error("❌ שגיאה בשיתוף:", error);
+      alert("❌ לא ניתן לשתף את המתכון");
+    }
+  };
+  
 
   if (loading) return <p className="text-center mt-10 text-blue-500">טוען מתכון...</p>;
   if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;
@@ -352,11 +390,35 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
 
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <div className="flex flex-col md:flex-row items-start gap-8">
-        {/* תמונת מתכון */}
-        <div className="w-full md:w-1/2">
-          <img src={`/api${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
+    <div className="flex flex-col md:flex-row items-start gap-8">
+      
+      {/* תמונת מתכון */}
+      <div className="w-full md:w-1/2 relative"> 
+        <img src={`/api${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
+  
+        {/* 🔹 כפתור שיתוף בפינה הימנית העליונה */}
+        <div className="absolute top-4 right-4 bg-gray-200 bg-opacity-50 p-2 rounded-full">
+          <button onClick={() => setShowShareInput(!showShareInput)}>
+            <img src={shareIcon} alt="Share" className="w-8 h-8" />
+          </button>
         </div>
+  
+        {/* 🔹 טופס שיתוף (יופיע רק כאשר `showShareInput` = true) */}
+        {showShareInput && (
+          <div className="absolute top-14 right-4 bg-white shadow-lg rounded-lg p-4 w-60">
+            <input
+              type="text"
+              value={shareUsername}
+              onChange={(e) => setShareUsername(e.target.value)}
+              placeholder="שם משתמש"
+              className="border px-2 py-1 rounded w-full"
+            />
+            <button onClick={handleShareRecipe} className="bg-blue-500 text-white px-4 py-2 rounded mt-2 w-full">
+              שתף
+            </button>
+          </div>
+        )}
+      </div>
 
         {/* פרטי מתכון */}
         <div className="w-full md:w-1/2">

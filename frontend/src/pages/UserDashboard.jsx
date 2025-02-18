@@ -4,17 +4,35 @@ import { toast } from "react-toastify";
 import { useAuth } from "../context/UserContext";
 import CreateRecipe from "./CreateRecipe";
 
+
 export default function UserDashboard() {
   const navigate = useNavigate(); // ✅ הגדרת navigate
   const { user } = useAuth();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sharedRecipes, setSharedRecipes] = useState([]);
+  const userId = localStorage.getItem("user_id");
 
   useEffect(() => {
     if (user) {
       fetchUserRecipes();
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchSharedRecipes = async () => {
+      try {
+        const response = await fetch(`/api/users/${userId}/shared_recipes`);
+        if (!response.ok) throw new Error("שגיאה בשליפת מתכונים משותפים");
+        const data = await response.json();
+        setSharedRecipes(data);
+      } catch (error) {
+        console.error("❌ שגיאה:", error);
+      }
+    };
+
+    fetchSharedRecipes();
+  }, [userId]);
 
   const fetchUserRecipes = async () => {
     try {
@@ -74,6 +92,29 @@ export default function UserDashboard() {
           ))}
         </div>
       </div>
+
+      <div className="max-w-4xl mx-auto p-8">
+      <h1 className="text-3xl font-bold">📢 מתכונים ששיתפו איתי</h1>
+      {sharedRecipes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+          {sharedRecipes.map((recipe) => (
+            <div key={recipe.recipe_id} className="bg-white shadow-md rounded-lg overflow-hidden">
+              <a href={`/recipes/${recipe.recipe_id}`} className="block">
+                <img src={`/api${recipe.recipe_image}`} alt={recipe.recipe_name} className="w-full h-32 object-cover" />
+              </a>
+              <div className="p-4">
+                <h3 className="text-lg font-bold">{recipe.recipe_name}</h3>
+                <a href={`/recipes/${recipe.recipe_id}`} className="text-blue-500 mt-2 block">
+                  צפה במתכון →
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 mt-4">אין שיתופים עדיין.</p>
+      )}
+    </div>
 
       {/* Create Recipe Section */}
       <div className="bg-white rounded-lg shadow-md p-6">
