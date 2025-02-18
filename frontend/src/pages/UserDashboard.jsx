@@ -8,13 +8,11 @@ export default function UserDashboard() {
   const navigate = useNavigate(); // ✅ הגדרת navigate
   const { user } = useAuth();
   const [recipes, setRecipes] = useState([]);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchUserRecipes();
-      fetchNotifications();
     }
   }, [user]);
 
@@ -37,23 +35,6 @@ export default function UserDashboard() {
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const response = await fetch(`/api/users/${user.id}/notifications`, {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
-        }
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch notifications");
-
-      const data = await response.json();
-      setNotifications(data);
-    } catch (error) {
-      toast.error("שגיאה בטעינת ההתראות");
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -64,23 +45,7 @@ export default function UserDashboard() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">  שלום, {user?.first_name} {user?.last_name}!</h2>
-
-      {/* Notifications Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-2xl font-bold mb-4">📢 התראות</h3>
-        <div className="space-y-2">
-          {notifications.length > 0 ? (
-            notifications.map((notif, index) => (
-              <div key={index} className="p-3 bg-gray-50 rounded">
-                {notif.message}
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-500">אין התראות חדשות</p>
-          )}
-        </div>
-      </div>
+      <h2 className="text-3xl font-bold mb-6">  שלום, {user.first_name} {user.last_name}!</h2>
 
       {/* Recipes Section */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">

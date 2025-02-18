@@ -1,66 +1,133 @@
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { useAuth } from "../context/UserContext"; // ✅ שימוש ב-Context לניהול המשתמש
+import { useAuth } from "../context/UserContext";
+import userIcon from "../assets/user-image.png";  
+import notificationIcon from "../assets/notifi-image.png";  
+import "./Navbar.css";  // ✅ מייבא את קובץ ה-CSS
 
 export default function Navbar() {
-  const { user, setUser } = useAuth(); // ✅ משיכת המידע על המשתמש
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-
-    if (!token) {
-      console.warn("⚠️ No token found - User is logged out.");
-      setUser(null);
-      return;
+    if (user) {
+      fetchNotifications();
     }
+  }, [user]);
 
-    console.log("🔹 Token exists:", token);
-  }, []); // ✅ useEffect רץ רק פעם אחת בעת טעינת הקומפוננטה
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/users/${user.id}/notifications`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` },
+      });
+  
+      // 🔴 בדיקה אם השרת מחזיר שגיאה (401, 404, 500 וכו')
+      if (!response.ok) {
+        console.error(`❌ Server error: ${response.status} - ${response.statusText}`);
+        return;
+      }
+  
+      // 🔴 וידוא שהתשובה מגיעה בפורמט JSON תקין
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        setNotifications(data);
+  
+        // 🔴 בדיקה אם יש התראות לא נקראות
+        const unread = data.some(notif => !notif.isRead);
+        const wasReadBefore = localStorage.getItem("readNotifications") === "true";
+        setHasUnread(unread && !wasReadBefore);
+        
+      } catch (jsonError) {
+        console.error("❌ Failed to parse JSON:", jsonError);
+        console.error("🔍 Server response was:", text);
+      }
+  
+    } catch (error) {
+      console.error("❌ Error fetching notifications:", error);
+    }
+  };
+  
+
+  const markNotificationsAsRead = async () => {
+    try {
+      await fetch(`/api/users/${user.id}/notifications/read`, { method: "POST" });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setHasUnread(false);
+      localStorage.setItem("readNotifications", "true");
+    } catch (error) {
+      console.error("❌ Error marking notifications as read:", error);
+    }
+  };
 
   const handleLogout = () => {
-    console.log("🔴 Logging out - Removing token");
-    localStorage.removeItem("authToken"); 
-    localStorage.removeItem("user_id");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("readNotifications");
     setUser(null);
     navigate("/");
-};
-
+  };
 
   return (
-    <nav className="fixed top-0 w-full bg-white bg-opacity-90 backdrop-blur-md py-4 px-8 flex items-center justify-between shadow-md z-50">
-      
-      {/* תפריט ניווט */}
-      <div className="flex gap-12 text-md tracking-wide">
-        <Link to="/" className="hover:text-[#1D3557] transition-all">דף הבית</Link>
-        <Link to="/recipes" className="hover:text-[#1D3557] transition-all">כל המתכונים</Link>
-        <Link to="/categories" className="hover:text-[#1D3557] transition-all">קטגוריות</Link>
-
-        {/* הצגת אזור אישי רק למשתמשים מחוברים */}
-        {user && (
-          <Link to="/dashboard" className="hover:text-[#1D3557] transition-all">איזור אישי</Link>
-        )}
+    <nav className="navbar">
+      {/* קישורי ניווט */}
+      <div className="nav-links">
+        <Link to="/">דף הבית</Link>
+        <Link to="/recipes">כל המתכונים</Link>
+        <Link to="/categories">קטגוריות</Link>
       </div>
 
-      {/* לוגו ממורכז */}
-      <div className="absolute left-1/2 transform -translate-x-1/2">
-        <Link to="/">
-          <img 
-            src="/Plateful_Logo_Ultra_High_Res.png"  
-            alt="Plateful Logo" 
-            className="h-12 w-auto object-contain" 
-          />
-        </Link>
-      </div>
-
-      {/* התחברות / התנתקות */}
-      <div>
+      {/* אזור המשתמש */}
+      <div className="user-area">
         {user ? (
-          <p onClick={handleLogout} className="text-[#E63946] hover:text-red-700 transition-all">
-            התנתקות
-          </p>
+          <>
+            {/* אזור אישי */}
+            <Link to="/dashboard">
+              <img src={userIcon} alt="User" className="user-icon" />
+            </Link>
+
+            {/* התראות */}
+            <div className="relative">
+              <button onClick={() => {
+                setShowDropdown(!showDropdown);
+                if (!showDropdown) markNotificationsAsRead();
+              }}>
+                <img src={notificationIcon} alt="Notifications" className="notification-icon" />
+                {hasUnread && <span className="notification-badge">{notifications.length}</span>}
+              </button>
+              {showDropdown && (
+                <div className="notifications-dropdown">
+                  {notifications.length > 0 ? notifications.map((notif, index) => (
+                    <a key={index} href={notif.link}>{notif.message}</a>
+                  )) : <p>אין התראות חדשות</p>}
+                </div>
+              )}
+            </div>
+
+            {/*  כפתור התנתקות*/}
+            <div className="relative">
+              <p 
+                className="logout-button"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={handleLogout}
+              >
+                התנתקות
+              </p>
+              {showTooltip && <span className="tooltip tooltip-visible">התנתקות</span>}
+            </div>
+
+          </>
         ) : (
-          <Link to="/login" className="hover:text-[#1D3557] transition-all">התחברות</Link>
+          <div className="relative">
+            <Link to="/login">
+              <img src={userIcon} alt="Login" className="user-icon" />
+            </Link>
+            {showTooltip && <span className="tooltip tooltip-visible">התחברות</span>}
+          </div>
         )}
       </div>
     </nav>

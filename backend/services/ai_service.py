@@ -350,8 +350,8 @@ def calculate_nutritional_info(ingredients: List[Dict], servings: int) -> Dict:
         except ValueError as e:
             print(f"⚠️ Skipping ingredient {ingredient['name']} due to error: {e}")
 
+    # 🔹 חישוב הערכים התזונתיים לכל מנה
     per_serving = {key: round(value / float(servings), 2) for key, value in total_nutrition.items()}
-    per_serving["portion_size"] = round(sum(float(ing["quantity"]) for ing in ingredients) / float(servings), 2)
 
     print(f"✅ Final nutrition per serving: {per_serving}")
     return per_serving

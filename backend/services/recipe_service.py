@@ -57,7 +57,6 @@ def create_recipe(db: Session, recipe_data: dict):
             protein=nutrition_data["protein"],
             carbs=nutrition_data["carbs"],
             fats=nutrition_data["fats"],
-            portion_size=nutrition_data["portion_size"]
         )
         nutrition_data = calculate_nutritional_info(ingredients_data, recipe.servings)
 

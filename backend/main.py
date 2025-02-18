@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Union
 from datetime import datetime, timedelta
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials,OAuth2PasswordBearer
 
+from models.notification_model import Notification
 from models.security import verify_password, create_access_token
 from jose import JWTError, jwt 
 import json
@@ -25,6 +26,7 @@ from models.recipe_model import Comment
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from services.ai_service import calculate_nutritional_info
+from services.notification_service import create_notification, get_user_notifications, mark_notifications_as_read
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 
@@ -64,7 +66,6 @@ def create_access_token(user_id: int):
 
 # Pydantic models
 class NutritionalValues(BaseModel):
-    portion_size: int
     calories: int
     protein: int
     carbs: int
@@ -230,7 +231,6 @@ async def create_recipe(
             protein=nutrition_data["protein"],
             carbs=nutrition_data["carbs"],
             fats=nutrition_data["fats"],
-            portion_size=nutrition_data["portion_size"]
         )
         db.add(new_nutritional_info)
         db.commit()
@@ -292,7 +292,6 @@ async def get_recipes(
             "creator_id": r.creator_id,
             "image_url": r.image_url,
             "nutritional_info": {
-                "portion_size": r.nutritional_info.portion_size if r.nutritional_info else 0,
                 "calories": r.nutritional_info.calories if r.nutritional_info else 0,
                 "protein": r.nutritional_info.protein if r.nutritional_info else 0,
                 "carbs": r.nutritional_info.carbs if r.nutritional_info else 0,
@@ -326,7 +325,6 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
         "protein": nutritional_info.protein if nutritional_info else 0,
         "carbs": nutritional_info.carbs if nutritional_info else 0,
         "fats": nutritional_info.fats if nutritional_info else 0,
-        "portion_size": nutritional_info.portion_size if nutritional_info else 100,
     }
 
     return {
@@ -567,7 +565,7 @@ setup_ai_routes(app)
 @app.post("/recipes/{recipe_id}/comment")
 async def add_comment(
     recipe_id: int,
-    comment_data: CommentRequest,  # ✅ FastAPI יצפה ל-JSON בפורמט הנכון
+    comment_data: CommentRequest,
     db: Session = Depends(get_db)
 ):
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
@@ -588,6 +586,17 @@ async def add_comment(
 
     db.add(comment)
     db.commit()
+    db.refresh(comment)
+
+    # ✅ יצירת התראה לבעל המתכון אם זה לא אותו משתמש
+    if recipe.creator_id != comment_data.user_id:
+        create_notification(
+            db, 
+            user_id=recipe.creator_id, 
+            message=f"💬 {comment_data.username} הגיב/ה למתכון שלך {recipe.name}!",
+            link=f"/recipes/{recipe_id}"
+        )
+
     return {"message": "Comment added successfully", "comment": comment.content}
 
 @app.get("/recipes/{recipe_id}/comments")
@@ -643,24 +652,20 @@ async def register_user(user: UserRegister, db: Session = Depends(get_db)):
 async def reply_to_comment(
     recipe_id: int,
     comment_id: int,
-    comment_data: CommentRequest,  # כולל user_id, content
+    comment_data: CommentRequest,
     db: Session = Depends(get_db)
 ):
-    # 1. בדוק שהמתכון קיים
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    # 2. בדוק שהתגובה שאליה משיבים קיימת
     parent_comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not parent_comment:
         raise HTTPException(status_code=404, detail="Parent comment not found")
 
-    # 3. בדוק תוכן התגובה (לא ריק)
     if not comment_data.content.strip():
         raise HTTPException(status_code=400, detail="Reply cannot be empty")
 
-    # 4. צור את תגובת-הבן
     reply_comment = Comment(
         recipe_id=recipe_id,
         user_id=comment_data.user_id,
@@ -669,9 +674,19 @@ async def reply_to_comment(
         timestamp=datetime.utcnow().isoformat(),
         parent_id=comment_id
     )
+
     db.add(reply_comment)
     db.commit()
     db.refresh(reply_comment)
+
+    # ✅ יצירת התראה למי שהגיב לראשונה, אם זה לא אותו משתמש
+    if parent_comment.user_id != comment_data.user_id:
+        create_notification(
+            db, 
+            user_id=parent_comment.user_id, 
+            message=f"💬 {comment_data.username} השיב/ה לתגובה שלך במתכון {recipe.name}!",
+            link=f"/recipes/{recipe_id}"
+        )
 
     return {
         "message": "Reply added successfully",
@@ -683,6 +698,7 @@ async def reply_to_comment(
             "timestamp": reply_comment.timestamp
         }
     }
+
 
 @app.post("/login")
 async def login_user(user_data: dict, db: Session = Depends(get_db)):
@@ -767,26 +783,45 @@ async def get_user_recipes(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/users/{user_id}/notifications")
-async def get_user_notifications(user_id: int, db: Session = Depends(get_db)):
-    notifications = [
-        {"message": "User 3 shared a recipe with you!", "link": "/recipes/5"},
-        {"message": "New comment on your recipe!", "link": "/recipes/2"},
-    ]
-    return notifications
+async def fetch_notifications(user_id: int, db: Session = Depends(get_db)):
+    """ מחזיר את ההתראות של המשתמש """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-@app.get("/users/{user_id}/shared-recipes")
-async def get_shared_recipes(user_id: int, db: Session = Depends(get_db)):
-    shared_recipes = db.query(SharedRecipe).filter(SharedRecipe.user_id == user_id).all()
-    
+    notifications = get_user_notifications(db, user_id)
     return [
-        {
-            "id": shared.recipe.id,
-            "name": shared.recipe.name,
-            "categories": shared.recipe.categories,
-            "rating": shared.recipe.rating
-        }
-        for shared in shared_recipes
+        {"message": n.message, "link": n.link, "is_read": n.is_read, "created_at": n.created_at.isoformat()}
+        for n in notifications
     ]
+
+
+@app.post("/users/{user_id}/notifications/read")
+async def mark_all_notifications_as_read(user_id: int, db: Session = Depends(get_db)):
+    """ מסמן את כל ההתראות של המשתמש כנקראו """
+    db.query(Notification).filter(Notification.user_id == user_id).update({"is_read": True})
+    db.commit()
+    return {"message": "All notifications marked as read"}
+
+
+@app.post("/recipes/{recipe_id}/share/{user_id}")
+async def share_recipe(recipe_id: int, user_id: int, db: Session = Depends(get_db)):
+    """ שיתוף מתכון עם משתמש אחר ויצירת התראה """
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not recipe or not user:
+        raise HTTPException(status_code=404, detail="Recipe or user not found")
+
+    shared_recipe = SharedRecipe(recipe_id=recipe_id, user_id=user_id)
+    db.add(shared_recipe)
+    db.commit()
+
+    # ✅ יצירת התראה למשתמש ששיתפו איתו את המתכון
+    create_notification(db, user_id, f"📢 {recipe.name} שותף איתך!", f"/recipes/{recipe_id}")
+
+    return {"message": f"Recipe '{recipe.name}' shared successfully with user {user_id}"}
+
 
 if __name__ == "__main__":
     import uvicorn
