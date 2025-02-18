@@ -13,57 +13,64 @@ export default function Navbar() {
   const [hasUnread, setHasUnread] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
-    }
-  }, [user]);
-
+  // ✅ שליפת התראות מהשרת
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/users/${user.id}/notifications`, {
+      const response = await fetch(`/api/users/${user.id}/notifications`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` },
       });
-  
-      // 🔴 בדיקה אם השרת מחזיר שגיאה (401, 404, 500 וכו')
+
       if (!response.ok) {
         console.error(`❌ Server error: ${response.status} - ${response.statusText}`);
         return;
       }
-  
-      // 🔴 וידוא שהתשובה מגיעה בפורמט JSON תקין
-      const text = await response.text();
-      try {
-        const data = JSON.parse(text);
-        setNotifications(data);
-  
-        // 🔴 בדיקה אם יש התראות לא נקראות
-        const unread = data.some(notif => !notif.isRead);
-        const wasReadBefore = localStorage.getItem("readNotifications") === "true";
-        setHasUnread(unread && !wasReadBefore);
-        
-      } catch (jsonError) {
-        console.error("❌ Failed to parse JSON:", jsonError);
-        console.error("🔍 Server response was:", text);
-      }
-  
+
+      const data = await response.json();
+      setNotifications(data);
+
+      // ✅ האם יש התראות שלא נקראו?
+      const hasUnreadNotifications = data.some(n => !n.isRead);
+      setHasUnread(hasUnreadNotifications); 
+
     } catch (error) {
       console.error("❌ Error fetching notifications:", error);
     }
   };
-  
 
+  // ✅ רץ כל 30 שניות לבדוק אם נוספו התראות חדשות
+  useEffect(() => {
+    if (user) {
+      const checkForNewNotifications = async () => {
+        await fetchNotifications();
+      };
+
+      checkForNewNotifications();
+
+      const interval = setInterval(checkForNewNotifications, 30000);
+
+      return () => clearInterval(interval);
+    }
+  }, [user]); // ✅ רץ מחדש כשהמשתמש משתנה
+
+  // ✅ כאשר המשתמש פותח את ההתראות - סימון כנקרא
   const markNotificationsAsRead = async () => {
     try {
-      await fetch(`/api/users/${user.id}/notifications/read`, { method: "POST" });
+      await fetch(`/api/users/${user.id}/notifications/read`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` },
+      });
+
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setHasUnread(false);
-      localStorage.setItem("readNotifications", "true");
+
+      // ✅ אם אין יותר התראות חדשות, נסיר את העיגול
+      setHasUnread(notifications.some(n => !n.isRead));
+
     } catch (error) {
       console.error("❌ Error marking notifications as read:", error);
     }
   };
 
+  // ✅ התנתקות מהמערכת
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("readNotifications");
@@ -107,7 +114,7 @@ export default function Navbar() {
               )}
             </div>
 
-            {/*  כפתור התנתקות*/}
+            {/*  כפתור התנתקות */}
             <div className="relative">
               <p 
                 className="logout-button"
