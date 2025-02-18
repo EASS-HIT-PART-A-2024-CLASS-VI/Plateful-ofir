@@ -498,23 +498,18 @@ async def share_recipe(
     return {"message": f"Recipe '{recipe.name}' shared successfully with user {user_id}"}
 
 @app.get("/shopping-list/{recipe_id}")
-async def get_shopping_list(
-    recipe_id: int,
-    servings: int = 1,
-    db: Session = Depends(get_db)
-    ):
-
+async def get_shopping_list(recipe_id: int, servings: int = 1, db: Session = Depends(get_db)):
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    
+
     scale_factor = servings / recipe.servings
     items = [
         {"name": ing.name, "quantity": round(ing.quantity * scale_factor, 2), "unit": ing.unit}
         for ing in recipe.ingredients
     ]
     
-    return {"recipe_name": recipe.name, "shopping_list": items}
+    return {"shopping_list": items}  # ודא שזו התשובה המוחזרת בצד השרת
 
 @app.post("/recipes/{recipe_id}/timers")
 async def add_timer(recipe_id: int, step_number: int = Form(...), duration: int = Form(...), label: str = Form(...), db: Session = Depends(get_db)):

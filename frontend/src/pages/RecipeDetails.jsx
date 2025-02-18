@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import ChatDrawer from "../components/ChatDrawer";
 import RatingStars from "../components/RatingStars";
 import CommentItem from "../components/CommentItem";
+import ShoppingListPopup from "../components/ShoppingListPopup";
 import beepSound from "../assets/beep.wav";
 
 export default function RecipeDetails() {
@@ -14,7 +15,6 @@ export default function RecipeDetails() {
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState([]);
   const [newCommentName, setNewCommentName] = useState(""); 
-  const [timers, setTimers] = useState([]);
   const [rating, setRating] = useState(0);
   const [userRating, setUserRating] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -26,9 +26,8 @@ export default function RecipeDetails() {
   const [servings, setServings] = useState(null); 
   const [scaledIngredients, setScaledIngredients] = useState([]);
   const [scaledNutrition, setScaledNutrition] = useState({});
-  const [originalNutrition, setOriginalNutrition] = useState(null)
   const [originalIngredients, setOriginalIngredients] = useState(null);
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
 
   useEffect(() => {
@@ -162,6 +161,9 @@ export default function RecipeDetails() {
   }
 
   const commentTree = buildCommentTree(comments);
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
 // 🔥 פונקציה להתחלת טיימר
 const startTimer = (stepNumber, durationInMinutes) => {
@@ -394,17 +396,33 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
           <ul className="mt-4 list-disc pl-5">
         {scaledIngredients ? (
           scaledIngredients.map((ingredient, index) => (
-            <li key={index}>
-              {ingredient.name} - {ingredient.quantity} {ingredient.unit}
-              <button onClick={() => handleFindSubstitute(ingredient.name)}>
-                🔄 מצא תחליף
-              </button>
-            </li>
+          <li key={index} className="ingredient-item">
+            <span>{ingredient.name} - {ingredient.quantity} {ingredient.unit}</span>
+            <button 
+              onClick={() => handleFindSubstitute(ingredient.name)} 
+              className="substitute-btn">
+              🔄 מצא תחליף
+            </button>
+          </li>
+
           ))): (
             <p>אין מרכיבים</p>
             )
             }
           </ul>
+          {/* כפתור "צור רשימת קניות" */}
+          <button onClick={openModal} className="btn-create-shopping-list">
+            צור רשימת קניות
+          </button>
+
+          {isModalOpen && (
+            <ShoppingListPopup
+              recipeId={id}
+              servings={servings}
+              isOpen={isModalOpen} 
+              onClose={closeModal}
+            />
+          )}
         </div>
 
         <div>

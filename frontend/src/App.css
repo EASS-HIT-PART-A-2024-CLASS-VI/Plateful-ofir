@@ -204,3 +204,55 @@
 .comment-submit-btn:hover {
   background-color: #005bb5 !important;
 }
+
+.shopping-list-container {
+  font-family: Arial, sans-serif;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.shopping-list-container ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.shopping-list-container li {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.open-modal-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.open-modal-btn:hover {
+  background-color: #45a049;
+}
+
+.ingredient-item {
+  display: flex;
+  justify-content: space-between; /* מפזר את האלמנטים לצדדים */
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #bbb; /* קו הפרדה בין מצרכים */
+}
+
+.substitute-btn {
+  color: rgb(14, 13, 13);
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
