@@ -1,0 +1,146 @@
+/* סגנון כללי של הניווט */
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 50;
+  }
+  
+  /* ניווט עיקרי */
+  .nav-links {
+    display: flex;
+    gap: 48px;
+    font-size: 16px;
+  }
+  
+  .nav-links a {
+    color: black;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+  
+  .nav-links a:hover {
+    color: #1D3557;
+  }
+  
+  /* אזור אישי, התראות, התחברות/התנתקות */
+  .user-area {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-right: -48px; /* ✅ מקרב למרכז */
+  }
+  
+  /* אייקונים (משתמש, התראות) */
+  .user-icon, .notification-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: opacity 0.3s;
+  }
+  
+  .user-icon:hover, .notification-icon:hover {
+    opacity: 0.8;
+  }
+  
+  /* התראות - עיגול אדום */
+  .notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: red;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  
+  /* תפריט ההתראות */
+/* תפריט ההתראות - עיצוב כללי */
+.notifications-dropdown {
+    position: absolute;
+    right: -120px;  /* ✅ מזיז את התפריט שמאלה */
+    margin-top: 8px;
+    background: white;
+    font-size: 14px;
+    color: black;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease-in-out;
+    min-width: 230px; /* ✅ גודל רגיל */
+  }
+  
+  /* תפריט כשהוא ריק - יהיה צר יותר */
+  .notifications-dropdown:empty {
+    min-width: 150px; /* ✅ קטן יותר אם אין התראות */
+    text-align: center;
+    padding: 10px;
+  }  
+  
+  .notifications-dropdown a {
+    display: block;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    text-decoration: none;
+    color: black;
+    transition: color 0.3s;
+  }
+  
+  .notifications-dropdown a:hover {
+    color: blue;
+  }
+  
+  /* כפתור התנתקות */
+  .logout-button {
+    color: #E63946;
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.3s;
+  }
+  
+  .logout-button:hover {
+    color: red;
+  }
+  
+  /* אפקט ה-HOVER לטקסט של התחברות/התנתקות */
+  .tooltip {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 36px;
+    background: #333;
+    color: white;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  .tooltip-visible {
+    opacity: 1;
+  }
+  
+  /* אנימציה */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  

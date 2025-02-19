@@ -34,6 +34,7 @@ class User(Base):
 
     recipes = relationship("Recipe", back_populates="creator") 
     shopping_lists = relationship("ShoppingList", back_populates="user")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 class UserCreate(BaseModel):
     username: str

@@ -51,7 +51,6 @@ class NutritionalInfo(Base):
     protein = Column(Float)
     carbs = Column(Float)
     fats = Column(Float)
-    portion_size = Column(Float)
     
     recipe = relationship("Recipe", back_populates="nutritional_info")
 
