@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom"; // ✅ הוספת useNavigate
 import { toast } from "react-toastify";
 import { useAuth } from "../context/UserContext";
 import CreateRecipe from "./CreateRecipe";
+import editIcon from "../assets/edit-image.png";  
+import deleteIcon from "../assets/delete-image.png";
+import "../App.css";
+
 
 
 export default function UserDashboard() {
@@ -15,9 +19,11 @@ export default function UserDashboard() {
 
   useEffect(() => {
     if (user) {
+      console.log("🔍 User Data:", user);  // ✅ בדיקת הנתונים שמגיעים מהשרת
       fetchUserRecipes();
     }
   }, [user]);
+  
 
   useEffect(() => {
     const fetchSharedRecipes = async () => {
@@ -61,36 +67,76 @@ export default function UserDashboard() {
     );
   }
 
+  const handleDeleteRecipe = async (recipeId) => {
+    if (!window.confirm("❌ האם אתה בטוח שברצונך למחוק את המתכון הזה?")) return;
+
+    const userId = localStorage.getItem("user_id"); // 🔹 שליפת ה-User ID מהאחסון המקומי
+
+    try {
+        const response = await fetch(`/api/recipes/${recipeId}`, {
+            method: "DELETE",
+            headers: {
+                "Authorization": `Bearer ${userId}`, // ✅ שולח את ה-User ID בכותרת
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error("❌ שגיאה במחיקת המתכון");
+        }
+
+        toast.success("✅ המתכון נמחק בהצלחה!");
+        setRecipes((prevRecipes) => prevRecipes.filter(recipe => recipe.id !== recipeId)); // ✅ מסיר מה-UI
+    } catch (error) {
+        toast.error("❌ לא ניתן למחוק את המתכון");
+    }
+};
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">  שלום, {user.first_name} {user.last_name}!</h2>
-
+      <h2 className="text-3xl font-bold mb-6"> שלום, {user?.first_name ? `${user.first_name} ${user.last_name}` : "משתמש"}!</h2>
       {/* Recipes Section */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-2xl font-bold mb-4">🍽️ המתכונים שלך</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {recipes.map((recipe) => (
-            <div key={recipe.id} className="border rounded p-4 hover:shadow-lg transition duration-200">
-              <h4 className="font-bold text-lg">{recipe.name}</h4>
-              <p className="text-gray-600">📂 קטגוריות: {recipe.categories}</p>
-              <p className="text-gray-600">⏳ זמן הכנה: {recipe.cooking_time} דקות</p>
-              <div className="flex gap-3 mt-2">
-                <button
-                  onClick={() => navigate(`/recipes/${recipe.id}`)} // ✅ שימוש ב- navigate
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+      <h3 className="text-2xl font-bold mb-4">🍽️ המתכונים שלך</h3>
+      <div className="recipe-container">
+        {recipes.map((recipe) => (
+          <div 
+            key={recipe.id} 
+            className="recipe-card"
+            onClick={() => navigate(`/recipes/${recipe.id}`)}
+          >
+            {/* ✅ תמונת המתכון */}
+            <img 
+              src={`/api${recipe.image_url}`} 
+              alt={recipe.name} 
+              className="recipe-image"
+            />
+
+            {/* ✅ פרטי המתכון */}
+            <div className="recipe-details">
+              <h4 className="recipe-title">{recipe.name}</h4>
+              <p className="recipe-category">📂 קטגוריות: {recipe.categories}</p>
+              <p className="recipe-time">⏳ זמן הכנה: {recipe.cooking_time} דקות</p>
+
+              {/* ✅ אזור האייקונים (מופיעים רק כאשר מרחפים) */}
+              <div className="recipe-icons">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); navigate(`/recipes/edit/${recipe.id}`); }} 
+                  title="ערוך מתכון"
                 >
-                  צפייה
+                  <img src={editIcon} alt="Edit" className="icon" />
                 </button>
-                <button
-                  onClick={() => navigate(`/recipes/edit/${recipe.id}`)} // ✅ שימוש ב- navigate
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleDeleteRecipe(recipe.id); }} 
+                  title="מחק מתכון"
                 >
-                  עריכה
+                  <img src={deleteIcon} alt="Delete" className="icon" />
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
       </div>
 
       <div className="max-w-4xl mx-auto p-8">

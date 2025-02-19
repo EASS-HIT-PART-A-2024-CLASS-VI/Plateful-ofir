@@ -1,5 +1,5 @@
 from urllib.request import Request
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query, Form, Security
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query, Form, Security, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Union
 from datetime import datetime, timedelta
@@ -453,6 +453,30 @@ async def update_recipe(
         "image_url": recipe.image_url  
     }
 
+@app.delete("/recipes/{recipe_id}", response_model=None)
+async def delete_recipe(recipe_id: int, authorization: str = Header(None), db: Session = Depends(get_db)):
+    """ מוחק מתכון לפי ה-ID שלו """
+
+    # ✅ שליפת ה-User ID מה-Headers
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="❌ הרשאה חסרה")
+    
+    user_id = int(authorization.replace("Bearer ", ""))  # 🔹 הוצאת ה-ID מהכותרת
+
+    # 🔹 שליפת המתכון מה-DB
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+
+    if not recipe:
+        raise HTTPException(status_code=404, detail="❌ המתכון לא נמצא")
+
+    # 🔹 בדיקה אם המשתמש הנוכחי הוא הבעלים של המתכון
+    if recipe.creator_id != user_id:
+        raise HTTPException(status_code=403, detail="❌ אין לך הרשאה למחוק את המתכון הזה")
+
+    db.delete(recipe)
+    db.commit()
+
+    return {"message": "✅ המתכון נמחק בהצלחה"}
 
 
 @app.get("/recipes/{recipe_id}/scale")
@@ -779,6 +803,7 @@ async def get_current_user(
     except Exception as e:
         print(f"❌ Unexpected error: {e}")  # ✅ הדפסת כל שגיאה אחרת
         return {"message": "Internal server error"}
+    
     
 @app.get("/users/find/{username}")
 async def find_user(username: str, db: Session = Depends(get_db)):
