@@ -326,6 +326,7 @@ async def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
         "carbs": nutritional_info.carbs if nutritional_info else 0,
         "fats": nutritional_info.fats if nutritional_info else 0,
     }
+    print("📢 Nutritional info:", recipe.nutritional_info)
 
     return {
         "id": recipe.id,
@@ -418,7 +419,34 @@ async def update_recipe(
             recipe_id=recipe.id
         )
         db.add(new_ingredient)
-    
+
+        # ✅ חשב מחדש את הערכים התזונתיים
+    nutrition_data = calculate_nutritional_info(ingredients_list, recipe.servings)
+
+    # ✅ בדקי אם כבר קיים מידע תזונתי למתכון
+    existing_nutrition = db.query(NutritionalInfo).filter(NutritionalInfo.recipe_id == recipe.id).first()
+
+    if existing_nutrition:
+        # ✅ עדכון מידע קיים
+        existing_nutrition.calories = nutrition_data["calories"]
+        existing_nutrition.protein = nutrition_data["protein"]
+        existing_nutrition.carbs = nutrition_data["carbs"]
+        existing_nutrition.fats = nutrition_data["fats"]
+    else:
+        # ✅ יצירת מידע תזונתי חדש ושיוכו למתכון
+        new_nutrition = NutritionalInfo(
+            recipe_id=recipe.id,
+            calories=nutrition_data["calories"],
+            protein=nutrition_data["protein"],
+            carbs=nutrition_data["carbs"],
+            fats=nutrition_data["fats"]
+        )
+        db.add(new_nutrition)
+
+    db.commit()
+    print(f"✅ Nutritional info updated successfully for recipe {recipe.id}")
+
+
     db.commit()
     
     # 🛠 שלב 2: מחיקת טיימרים ישנים ושמירת חדשים
