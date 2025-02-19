@@ -501,7 +501,7 @@ async def share_recipe(recipe_id: int, user_id: int, db: Session = Depends(get_d
     db.commit()
 
     # יצירת התראה למשתמש
-    create_notification(db, user_id, f"📢 {recipe.name} שותף איתך!", f"/recipes/{recipe_id}")
+    create_notification(db, user_id, f"📢 המתכון {recipe.name} שותף איתך!", f"/recipes/{recipe_id}")
 
     return {"message": f"Recipe '{recipe.name}' shared successfully with user {user_id}"}
 
@@ -838,19 +838,45 @@ async def fetch_notifications(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    notifications = get_user_notifications(db, user_id)
+    notifications = db.query(Notification).filter(Notification.user_id == user_id).all()
+
     return [
-        {"message": n.message, "link": n.link, "is_read": n.is_read, "created_at": n.created_at.isoformat()}
+        {
+            "id": n.id,  # ✅ הוספת ה-ID לתשובה
+            "message": n.message,
+            "link": n.link,
+            "is_read": n.is_read,
+            "created_at": n.created_at.isoformat()
+        }
         for n in notifications
     ]
 
 
-@app.post("/users/{user_id}/notifications/read")
-async def mark_all_notifications_as_read(user_id: int, db: Session = Depends(get_db)):
-    """ מסמן את כל ההתראות של המשתמש כנקראו """
-    db.query(Notification).filter(Notification.user_id == user_id).update({"is_read": True})
+@app.delete("/users/{user_id}/notifications/read")
+async def delete_read_notifications(user_id: int, db: Session = Depends(get_db)):
+    """ מוחק את כל ההתראות שסומנו כנקראו """
+
+    deleted_rows = db.query(Notification).filter(Notification.user_id == user_id, Notification.is_read == True).delete(synchronize_session=False)
+    
     db.commit()
-    return {"message": "All notifications marked as read"}
+    
+    # ✅ במקום להחזיר 404, נחזיר הודעה שהכל נמחק
+    return {"message": f"{deleted_rows} read notifications deleted" if deleted_rows > 0 else "No read notifications to delete"}
+
+
+
+@app.delete("/users/{user_id}/notifications/{notification_id}")
+async def delete_notification(user_id: int, notification_id: int, db: Session = Depends(get_db)):
+    """ מוחק התראה ספציפית כאשר המשתמש לוחץ עליה """
+    notification = db.query(Notification).filter(Notification.id == notification_id, Notification.user_id == user_id).first()
+    
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    db.delete(notification)
+    db.commit()
+    
+    return {"message": "Notification deleted"}
 
 
 if __name__ == "__main__":

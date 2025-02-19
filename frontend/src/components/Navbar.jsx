@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/UserContext";
-import ChatDrawer from "../components/ChatDrawer";
 import { useChat } from '../context/ChatContext';
-import { useAuth } from "../context/UserContext";
+import ChatDrawer from "../components/ChatDrawer";
 import userIcon from "../assets/user-image.png";  
 import notificationIcon from "../assets/notifi-image.png";  
+import logophoto from "../assets/logo.png";  
+
 import "./Navbar.css";  // ✅ מייבא את קובץ ה-CSS
 
 export default function Navbar() {
@@ -24,26 +24,24 @@ export default function Navbar() {
   // ✅ שליפת התראות מהשרת
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`/api/users/${user.id}/notifications`, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` },
-      });
+        const response = await fetch(`/api/users/${user.id}/notifications`, {
+            headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` },
+        });
 
-      if (!response.ok) {
-        console.error(`❌ Server error: ${response.status} - ${response.statusText}`);
-        return;
-      }
+        if (!response.ok) {
+            console.error(`❌ Server error: ${response.status} - ${response.statusText}`);
+            return;
+        }
 
-      const data = await response.json();
-      setNotifications(data);
+        const data = await response.json();
+        console.log("📥 Notifications received from API:", data);  // 🔍 בדיקת המבנה
 
-      // ✅ האם יש התראות שלא נקראו?
-      const hasUnreadNotifications = data.some(n => !n.isRead);
-      setHasUnread(hasUnreadNotifications); 
-
+        setNotifications(data);
+        setHasUnread(data.some(n => !n.isRead));
     } catch (error) {
-      console.error("❌ Error fetching notifications:", error);
+        console.error("❌ Error fetching notifications:", error);
     }
-  };
+};
 
   // ✅ רץ כל 30 שניות לבדוק אם נוספו התראות חדשות
   useEffect(() => {
@@ -63,20 +61,42 @@ export default function Navbar() {
   // ✅ כאשר המשתמש פותח את ההתראות - סימון כנקרא
   const markNotificationsAsRead = async () => {
     try {
-      await fetch(`/api/users/${user.id}/notifications/read`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` },
+      const response = await fetch(`/api/users/${user.id}/notifications/read`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` }
       });
 
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Failed to delete read notifications");
+      }
 
-      // ✅ אם אין יותר התראות חדשות, נסיר את העיגול
-      setHasUnread(notifications.some(n => !n.isRead));
+      // ✅ עדכון ה-state כדי להסיר את כל ההתראות המסומנות כנקראו
+      setNotifications((prev) => prev.filter((n) => !n.isRead));
+  } catch (error) {
+      console.error("❌ Error deleting read notifications:", error);
+  }
+};
 
-    } catch (error) {
-      console.error("❌ Error marking notifications as read:", error);
-    }
-  };
+const handleNotificationClick = async (notificationId) => {
+  if (!notificationId) {
+      console.error("❌ Error: notificationId is undefined");
+      return;
+  }
+
+  try {
+      await fetch(`/api/users/${user.id}/notifications/${notificationId}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` }
+      });
+
+      // ✅ עדכון ה־state כדי להעלים את ההתראה מידית
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+  } catch (error) {
+      console.error("❌ Error deleting notification:", error);
+  }
+};
+
 
   // ✅ התנתקות מהמערכת
   const handleLogout = () => {
@@ -100,49 +120,37 @@ export default function Navbar() {
 
         <div className="absolute left-1/2 transform -translate-x-1/2">
           <Link to="/">
-            <img
-              src="/Plateful_Logo_Ultra_High_Res.png"
-              alt="Plateful Logo"
-              className="h-12 w-auto object-contain"
-            />
+          <img src={logophoto} alt="Logo" className="logo-photo" />
           </Link>
         </div>
 
-        <div className="flex items-center gap-6">
-            <button
-            onClick={() => openChat("איזה מצרכים יש לך?")}
-            className="text-[#1D3557] hover:text-blue-700 transition-all"
-          >
-            🔍 מצא לי מתכון
-          </button>
 
-          <button
-            onClick={() => openChat("איך אוכל לעזור לך? אשמח לענות על כל שאלה בנושא בישול ומתכונים.")}
-            className="text-[#1D3557] hover:text-blue-700 transition-all"
-          >
-            💭 שאל שאלה
-          </button>
 
-          {user ? (
-            <p onClick={handleLogout} className="text-[#E63946] hover:text-red-700 transition-all cursor-pointer">
-              התנתקות
-            </p>
-          ) : (
-            <Link to="/login" className="hover:text-[#1D3557] transition-all">התחברות</Link>
-          )}
-        </div>
-      </nav>
-
-      {/* ✅ צ'אט יחיד לכל הפעולות */}
-      <ChatDrawer
-        ref={chatDrawerRef}
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        title="עוזר מתכונים"
-      />
-    </>
       {/* אזור המשתמש */}
       <div className="user-area">
+        <div className="flex items-center gap-6">
+              <button
+              onClick={() => openChat("איזה מצרכים יש לך?")}
+              className="text-[#1D3557] hover:text-blue-700 transition-all"
+            >
+              🔍 מצא לי מתכון
+            </button>
+
+            <button
+              onClick={() => openChat("איך אוכל לעזור לך? אשמח לענות על כל שאלה בנושא בישול ומתכונים.")}
+              className="text-[#1D3557] hover:text-blue-700 transition-all"
+            >
+              💭 שאל שאלה
+            </button>
+
+        {/* ✅ צ'אט יחיד לכל הפעולות */}
+        <ChatDrawer
+          ref={chatDrawerRef}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          title="עוזר מתכונים"
+        /> 
+      </div>
         {user ? (
           <>
             {/* אזור אישי */}
@@ -161,8 +169,23 @@ export default function Navbar() {
               </button>
               {showDropdown && (
                 <div className="notifications-dropdown">
-                  {notifications.length > 0 ? notifications.map((notif, index) => (
-                    <a key={index} href={notif.link}>{notif.message}</a>
+                  {notifications.length > 0 ? notifications.map((notif) => (
+                    <div key={notif.id} className="notification-item">
+                      <a 
+                        href={notif.link} 
+                        onClick={(e) => {
+                          e.preventDefault();  // 🔥 מונע מעבר מיידי לדף
+                          handleNotificationClick(notif.id);  // ✅ שולח את ה-ID הנכון
+                          console.log("🛠 Clicked notification ID:", notif.id); 
+                          navigate(notif.link);  // ✅ מעביר את המשתמש לדף של ההתראה
+                          console.log("User ID being sent:", user.id);
+                          console.log("API URL:", `/api/users/${user.id}/notifications/read`);
+
+                        }}
+                      >
+                        {notif.message}
+                      </a>
+                    </div>
                   )) : <p>אין התראות חדשות</p>}
                 </div>
               )}

@@ -78,3 +78,9 @@ button {
   animation: fadeIn 0.2s ease-in-out;
 }
 
+.logo-photo {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
+}
