@@ -51,6 +51,10 @@ export default function EditRecipe() {
     setTimers(updatedTimers);
   };
 
+  const removeTimer = (index) => {
+    setTimers(timers.filter((_, i) => i !== index));
+  };
+
   const handleIngredientChange = (index, field, value) => {
     const updatedIngredients = [...ingredients];
     updatedIngredients[index][field] = value;
