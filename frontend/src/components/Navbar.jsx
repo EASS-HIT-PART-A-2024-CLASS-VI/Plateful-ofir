@@ -6,7 +6,6 @@ import ChatDrawer from "../components/ChatDrawer";
 import userIcon from "../assets/user-image.png";  
 import notificationIcon from "../assets/notifi-image.png";  
 import logophoto from "../assets/logo.png";  
-
 import "./Navbar.css";  // ✅ מייבא את קובץ ה-CSS
 
 export default function Navbar() {
@@ -115,7 +114,6 @@ const handleNotificationClick = async (notificationId) => {
       <div className="nav-links">
         <Link to="/">דף הבית</Link>
         <Link to="/recipes">כל המתכונים</Link>
-        <Link to="/categories">קטגוריות</Link>
       </div>
 
         <div className="absolute left-1/2 transform -translate-x-1/2">

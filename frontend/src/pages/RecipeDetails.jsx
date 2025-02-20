@@ -9,6 +9,17 @@ import ShoppingListPopup from "../components/ShoppingListPopup";
 import beepSound from "../assets/beep.wav";
 import { useChat } from '../context/ChatContext';
 import shareIcon from "../assets/share-image.png";
+import cookingTimeIcon from "../assets/time-image.png";
+import servingIcon from "../assets/serving-image.png";
+import tagicon from "../assets/tag-image.png";
+import pauseIcon from "../assets/pause-image.png";
+import stopIcon from "../assets/stop-image.png";
+import playIcon from "../assets/play-image.png";
+import TimerIcon from "../assets/timer-image.png";
+
+
+
+import "../App.css";
 
 export default function RecipeDetails() {
   const { id } = useParams();
@@ -400,7 +411,7 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
         <img src={`/api${recipe.image_url}`} alt={recipe.name} className="rounded-xl shadow-md w-full" />
   
         {/* 🔹 כפתור שיתוף בפינה הימנית העליונה */}
-        <div className="absolute top-4 right-4 bg-gray-200 bg-opacity-50 p-2 rounded-full">
+        <div className="absolute top-4 right-4 bg-gray-200 bg-opacity-50 rounded-full">
           <button onClick={() => setShowShareInput(!showShareInput)}>
             <img src={shareIcon} alt="Share" className="w-8 h-8" />
           </button>
@@ -423,35 +434,48 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
         )}
       </div>
 
-        {/* פרטי מתכון */}
-        <div className="w-full md:w-1/2">
-          <h1 className="text-4xl font-bold text-gray-800">{recipe.name}</h1>
-          <p className="text-lg text-gray-500 mt-2">{recipe.categories}</p>
-          <p className="text-md text-gray-600 mt-1">{recipe.tags}</p>
+      {/* פרטי מתכון */}
+      <div className="recipe-details-container">
+        <h1 className="recipe-title">{recipe.name}</h1>
+        <p className="recipe-category">{recipe.categories}</p>
+        <div className="tag-container">
+          <img src={tagicon} alt="tags icon" className="tag-icon" />
+          <p className="recipe-tags">{recipe.tags}</p>
+        </div>
 
-          <div className="flex items-center gap-4 mt-4">
-            <p className="text-lg">⏳ {recipe.cooking_time} דקות</p>
-            <div className="flex items-center gap-4 mt-4">
-            <label className="text-lg">🍽 מספר מנות:</label>
-            <input type="number" min="1" value={servings || ""} onChange={handleServingsChange} className="border px-2 py-1 rounded w-20"/>
+        {/* אזור זמן הכנה, מספר מנות ושאר המידע */}
+        <div className="recipe-meta">
+          <div className="recipe-info-item">
+            <img src={cookingTimeIcon} alt="Cooking Time" className="icon-style" />
+            <span>{recipe.cooking_time} דקות</span>
           </div>
+          <div className="recipe-info-item">
+            <img src={servingIcon} alt="Servings" className="icon-style" />
+            <label> מספר מנות:</label>
+            <input type="number" min="1" value={servings || ""} onChange={handleServingsChange} className="servings-input"/>
+          </div>
+        </div>
+
+        {/* ערכים תזונתיים - שורה אחת מתחת */}
+        <div className="nutrition-section">
+        <div className="nutrition-grid">
+            {scaledNutrition ? (
+              Object.entries(scaledNutrition).map(([key, value], index) => (
+                <div key={index} className="nutrition--card">
+                  <div className="nutrition--card-item">
+                    <span className="nutrition-value">
+                      {Number(value) ? Number(value).toFixed(1) : "N/A"}
+                    </span>
+                  </div>
+                  <p className="nutrition-label">{key}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">🔄 מחשב ערכים תזונתיים...</p>
+            )}
           </div>
         </div>
       </div>
-
-      {/* ערכים תזונתיים */}
-      <h3 className="text-2xl font-semibold text-gray-800 mb-3">ערכים תזונתיים</h3>
-      <div className="grid grid-cols-3 gap-4">
-        {scaledNutrition ? (
-          Object.entries(scaledNutrition).map(([key, value], index) => (
-            <div key={index} className="p-3 bg-gray-100 text-center rounded-lg">
-              <span className="block text-lg font-bold text-gray-800">{value}</span>
-              <span className="text-gray-500 text-sm">{key}</span>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500">🔄 מחשב ערכים תזונתיים...</p>
-        )}
       </div>
 
       {/* מרכיבים ושלבי הכנה */}
@@ -502,29 +526,32 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
               {step}
               {timer && (
                 <div className="flex items-center gap-2">
-                  <button
+                  <button 
                     onClick={() => startTimer(stepNumber, timer.duration)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                    className="timer-button"
                   >
-                    {activeTimers[stepNumber] > 0
-                      ? `⏳ ${formatTime(activeTimers[stepNumber])}`
-                      : `⏳ הפעל טיימר (${timer.duration} דקות)`}
+                    <img 
+                      src={TimerIcon} 
+                      alt="Start Timer" 
+                      className="timer-icon"
+                    />
+                    {activeTimers[stepNumber] > 0 
+                      ? formatTime(activeTimers[stepNumber]) 
+                      : `הפעל טיימר (${timer.duration} דקות)`}
                   </button>
 
                   {activeTimers[stepNumber] > 0 && (
                     <>
-                      <button
-                        onClick={() => pauseTimer(stepNumber)}
-                        className="pause_play_button"
-                      >
-                        {activeTimers[`${stepNumber}_paused`] ? "▶️ " : "⏸️ "}
+                      <button onClick={() => pauseTimer(stepNumber)} className="pause_play_button">
+                        <img 
+                          src={activeTimers[`${stepNumber}_paused`] ? playIcon : pauseIcon} 
+                          alt="Pause/Play" 
+                          className="timer-icon" 
+                        />
                       </button>
 
-                      <button
-                        onClick={() => stopTimer(stepNumber)}
-                        className="stop_button"
-                      >
-                        ⏹️ 
+                      <button onClick={() => stopTimer(stepNumber)} className="stop_button">
+                        <img src={stopIcon} alt="Stop" className="timer-icon" />
                       </button>
                     </>
                   )}
