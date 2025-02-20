@@ -114,6 +114,7 @@
 .recipe-image {
   width: 100%;
   height: 150px;
+  border-radius: 10px;
   object-fit: cover;
 }
 
@@ -411,10 +412,6 @@
   padding: 5px;
 }
 
-.reply-button:hover {
-  color: "none";
-}
-
 /* 🔹 כפתור שליחת תגובה */
 .comment-submit-btn {
   background-color: #0073e6 !important;
@@ -473,3 +470,82 @@
   padding: 8px 0;
   border-bottom: 1px dashed #bbb; /* קו הפרדה בין מצרכים */
 }
+
+/*עיצוב איזור אישי*/
+.header-container {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  width: 100%;
+}
+
+.create-recipe-button {
+  display: flex;
+  align-items: center;
+  gap: 8px; 
+  background-color: #7bbef8;
+  color: rgb(0, 0, 0);
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: 0.3s;
+  align-self: flex-start; 
+  }
+  
+
+.create-recipe-button img {
+  width: 20px; 
+  height: 20px;
+}
+
+.create-btn:hover {
+  transform: scale(1.05);
+}
+
+.recipe-card {
+  position: relative;
+  width: 250px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: white;
+  transition: box-shadow 0.2s ease-in-out;
+  cursor: pointer;
+  padding: 10px; /* הכנסת הטקסט קצת פנימה */
+  text-align: right;
+}
+
+.recipe-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  margin-right: 8px;
+}
+
+.recipe-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 8px;
+  padding: 0 8px;
+}
+
+.recipe-icons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.icon-edit-delete {
+  width: 23px;
+  height: 23px;
+  margin-left: 5px;
+}
+
+.icon-edit-delete:hover {
+  transform: scale(1.05);
+}
+
