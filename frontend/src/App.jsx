@@ -13,6 +13,7 @@ import Recipes from "./pages/Recipes";
 import RecipeDetails from "./pages/RecipeDetails";
 import UserDashboard from "./pages/UserDashboard"; 
 import EditRecipe from "./pages/EditRecipe"; 
+import CreateRecipe from "./pages/CreateRecipe";
 
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/recipes" element={<Recipes />} />
             <Route path="/recipes/:id" element={<RecipeDetails />} />
+            <Route path="/create-recipe" element={<CreateRecipe />} />
             <Route path="/recipes/edit/:id" element={<EditRecipe />} />
             <Route path="/dashboard" element={<UserDashboard />} />
             <Route path="/login" element={<Login />} />

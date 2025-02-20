@@ -5,6 +5,8 @@ import { useAuth } from "../context/UserContext";
 import CreateRecipe from "./CreateRecipe";
 import editIcon from "../assets/edit-image.png";  
 import deleteIcon from "../assets/delete-image.png";
+import time from "../assets/time-image.png"
+import addIcon from "../assets/add-image.png"
 import "../App.css";
 
 
@@ -97,7 +99,14 @@ export default function UserDashboard() {
       <h2 className="text-3xl font-bold mb-6"> שלום, {user?.first_name ? `${user.first_name} ${user.last_name}` : "משתמש"}!</h2>
       {/* Recipes Section */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="header-container">
       <h3 className="text-2xl font-bold mb-4">🍽️ המתכונים שלך</h3>
+        {/* כפתור יצירת מתכון */}
+        <button className="create-recipe-button" onClick={() => navigate("/create-recipe")}>
+          <img src={addIcon} alt="Add Recipe"/>
+          יצירת מתכון חדש
+        </button>
+      </div>
       <div className="recipe-container">
         {recipes.map((recipe) => (
           <div 
@@ -115,8 +124,8 @@ export default function UserDashboard() {
             {/* ✅ פרטי המתכון */}
             <div className="recipe-details">
               <h4 className="recipe-title">{recipe.name}</h4>
-              <p className="recipe-category">📂 קטגוריות: {recipe.categories}</p>
-              <p className="recipe-time">⏳ זמן הכנה: {recipe.cooking_time} דקות</p>
+              <p className="recipe-category"> {recipe.categories}</p>
+              <p  img src={time} alt="time" className="recipe-time"> {recipe.cooking_time} דקות</p>
 
               {/* ✅ אזור האייקונים (מופיעים רק כאשר מרחפים) */}
               <div className="recipe-icons">
@@ -124,13 +133,13 @@ export default function UserDashboard() {
                   onClick={(e) => { e.stopPropagation(); navigate(`/recipes/edit/${recipe.id}`); }} 
                   title="ערוך מתכון"
                 >
-                  <img src={editIcon} alt="Edit" className="icon" />
+                  <img src={editIcon} alt="Edit" className="icon-edit-delete" />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleDeleteRecipe(recipe.id); }} 
                   title="מחק מתכון"
                 >
-                  <img src={deleteIcon} alt="Delete" className="icon" />
+                  <img src={deleteIcon} alt="Delete" className="icon-edit-delete" />
                 </button>
               </div>
             </div>
@@ -151,7 +160,7 @@ export default function UserDashboard() {
               <div className="p-4">
                 <h3 className="text-lg font-bold">{recipe.recipe_name}</h3>
                 <a href={`/recipes/${recipe.recipe_id}`} className="text-blue-500 mt-2 block">
-                  צפה במתכון →
+                  →צפה במתכון 
                 </a>
               </div>
             </div>
@@ -161,11 +170,6 @@ export default function UserDashboard() {
         <p className="text-gray-500 mt-4">אין שיתופים עדיין.</p>
       )}
     </div>
-
-      {/* Create Recipe Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <CreateRecipe fetchUserRecipes={fetchUserRecipes} />
-      </div>
     </div>
   );
 }
