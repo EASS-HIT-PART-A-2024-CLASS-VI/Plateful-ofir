@@ -16,25 +16,24 @@ services:
     networks:
       - plateful_network
 
-  backend:
+  backend:  # ✅ הוספת שם השירות
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: plateful_backend
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:  # ✅ העברת `env_file` למיקום הנכון
+      - ./backend/.env
     environment:
       DATABASE_URL: "postgresql://postgres:password123@postgres:5432/plateful"
-      GEMINI_API_KEY: "${GEMINI_API_KEY}"
-    env_file:
-      - .env
     ports:
       - "8000:8000"
     volumes:
-      - ./static:/app/static  # ✅ תיקון גישה לקבצים סטטיים
+      - ./backend/static:/app/static  # ✅ תיקון גישה לקבצים סטטיים
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://backend:8000"]  # ✅ תיקון Healthcheck
+      test: ["CMD", "curl", "-f", "http://backend:8000"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -44,7 +43,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: plateful_frontend
     depends_on:
