@@ -235,8 +235,8 @@ export default function CreateRecipe({ fetchUserRecipes  = () => {}}) {
         />
   
         {/* Cooking time section */}
-        <div className="icon-label">
-          <img src="../assets/icons/time-image.png" alt="Cooking Time" className="icon" />
+        <div className="form-label">
+          <img src={timeIcon} alt="Cooking Time" className="icon-edit-create" />
           <label> זמן הכנה:</label>
         </div>
         <input 

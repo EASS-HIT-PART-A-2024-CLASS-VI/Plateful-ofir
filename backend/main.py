@@ -106,16 +106,6 @@ class RecipeCreate(BaseModel):
     cooking_time: int
     servings: int
     categories: str
-    tags: Optional[str] = None
-    ingredients: List[IngredientCreate]
-    timers: List[TimerCreate]
-
-class RecipeCreate(BaseModel):
-    name: str
-    preparation_steps: str
-    cooking_time: int
-    servings: int
-    categories: str
     tags: str
     ingredients: List[IngredientCreate] = []
     timers: List[TimerCreate] = []
@@ -289,6 +279,7 @@ async def get_recipes(
             "cooking_time": r.cooking_time,
             "categories": r.categories,
             "rating": r.rating,
+            "tags": r.tags,
             "creator_id": r.creator_id,
             "image_url": r.image_url,
             "nutritional_info": {

@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import filterIcon from "../assets/icons/filter-image.png"; // 📌 אייקון פילטר
+import filterIcon from "../assets/icons/filter-image.png";
+import timeIcon from '../assets/icons/time-image.png';
+import categoriesIcon from '../assets/icons/category-image.png';
+import RatingStars from "../components/RatingStars"; 
+import clearFilters from "../assets/icons/clear-filter-image.png"
+import tagsIcon from '../assets/icons/tag-image.png';
+import starIcon from '../assets/icons/star-image.png';
+
+
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
@@ -8,7 +16,7 @@ export default function Recipes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedRating, setSelectedRating] = useState(null);
-  const [hoveredRating, setHoveredRating] = useState(null); // ⭐ מעקב אחר הכוכבים שעומדים עליהם
+  const [hoveredRating, setHoveredRating] = useState(null);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,6 +31,7 @@ export default function Recipes() {
         setRecipes(data);
         setFilteredRecipes(data);
         setLoading(false);
+        console.log("📌 נתוני API:", data);
         const uniqueCategories = [...new Set(data.map((r) => r.categories))];
         setCategories(uniqueCategories);
       })
@@ -61,6 +70,7 @@ export default function Recipes() {
       if (
         filterRef.current &&
         !filterRef.current.contains(event.target) &&
+        filterButtonRef.current &&
         !filterButtonRef.current.contains(event.target)
       ) {
         setFilterOpen(false);
@@ -71,6 +81,15 @@ export default function Recipes() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSelectedRating(null);
+    setHoveredRating(null);
+  };
+
+  const hasActiveFilters = searchTerm || selectedCategory || selectedRating !== null;
 
   if (loading)
     return <p className="text-center mt-10 text-blue-500">טוען מתכונים...</p>;
@@ -83,7 +102,6 @@ export default function Recipes() {
     <div className="recipes-container">
       <h2 className="recipes-title">📖 כל המתכונים</h2>
 
-      {/* 🔍 שדה חיפוש + כפתור פילטר */}
       <div className="search-filter-container">
         <input
           type="text"
@@ -92,77 +110,70 @@ export default function Recipes() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
         />
-        <button
-          className="filter-button"
-          ref={filterButtonRef}
-          onClick={() => setFilterOpen(!filterOpen)}
-        >
-          <img src={filterIcon} alt="Filter" className="filter-icon" />
-        </button>
+        <div className="relative">
+          <button
+            className="filter-button"
+            ref={filterButtonRef}
+            onClick={() => setFilterOpen(!filterOpen)}
+          >
+            <img src={filterIcon} alt="Filter" className="filter-icon" />
+          </button>
+
+          {filterOpen && (
+            <div
+              className="filter-dropdown"
+              ref={filterRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '8px',
+                backgroundColor: 'white',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                borderRadius: '8px',
+                padding: '16px',
+                width: '250px',
+                zIndex: 1000
+              }}
+            >
+              {hasActiveFilters && (
+                <button onClick={clearAllFilters} className="clear-filter">
+                  <img src={clearFilters} alt="ניקוי" className="icon-style" />
+                </button>
+              )}
+
+              <div className="filter-section">
+                <h4 className="filter-title">קטגוריות</h4>
+                <div className="filter-grid">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() =>
+                        setSelectedCategory(selectedCategory === category ? "" : category)
+                      }
+                      className={`filter-category-button ${
+                        selectedCategory === category ? "active" : ""
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-section mt-4">
+                <h4 className="filter-title">⭐ דירוג</h4>
+                <RatingStars 
+                  currentRating={selectedRating} 
+                  onRate={(rating) => setSelectedRating(rating === selectedRating ? null : rating)}
+                  readOnly={false} 
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 🔽 תפריט פילטר (יופיע מתחת לכפתור) */}
-      {filterOpen && (
-        <div
-          className="filter-dropdown"
-          ref={filterRef}
-          style={{
-            position: "absolute",
-            top: filterButtonRef.current
-              ? filterButtonRef.current.getBoundingClientRect().bottom + window.scrollY + 10
-              : "50px",
-            left: filterButtonRef.current
-              ? filterButtonRef.current.getBoundingClientRect().left
-              : "520",
-          }}
-        >
-          {/* קטגוריות */}
-          <div className="filter-section">
-            <h4>📂 קטגוריות</h4>
-            <div className="filter-grid">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() =>
-                    setSelectedCategory(selectedCategory === category ? "" : category)
-                  }
-                  className={`filter-box ${
-                    selectedCategory === category ? "selected" : ""
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* דירוג */}
-          <div className="filter-section">
-            <h4>⭐ דירוג</h4>
-            <div className="filter-stars">
-              {[1, 2, 3, 4, 5].map((rating) => (
-                <span
-                  key={rating}
-                  className={`star ${
-                    hoveredRating >= rating || selectedRating >= rating
-                      ? "filled"
-                      : ""
-                  }`}
-                  onMouseEnter={() => setHoveredRating(rating)}
-                  onMouseLeave={() => setHoveredRating(null)}
-                  onClick={() =>
-                    setSelectedRating(selectedRating === rating ? null : rating)
-                  }
-                >
-                  ⭐
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 📜 רשימת מתכונים */}
       <div className="recipe-grid">
         {filteredRecipes.length > 0 ? (
           filteredRecipes.map((recipe) => (
@@ -176,10 +187,23 @@ export default function Recipes() {
                 }}
               />
               <div className="recipe-details">
-                <h3 className="recipe-title">{recipe.name}</h3>
-                <p className="recipe-category">📂 {recipe.categories}</p>
-                <p className="recipe-time">⏳ {recipe.cooking_time} דקות</p>
-                <p className="recipe-rating">⭐ {recipe.rating.toFixed(1)}</p>
+                  <h3 className="recipe-title">{recipe.name}</h3>
+                  <div className="recipe-category-icon "> 
+                  <img src={categoriesIcon} alt="קטגוריה" className="icon-style" />
+                    <span className="recipe-category">{recipe.categories}</span>
+                  </div>
+                  <div className="recipe-category-icon">
+                    <img src={tagsIcon} alt="תגיות" className="icon-style" />
+                    <span className="recipe-tags"> {recipe.tags} </span>
+                  </div>
+                  <div className="servings-input">
+                    <img src={timeIcon} alt="זמן הכנה" className="icon-style" />
+                    <span className="recipe-time">{recipe.cooking_time} דקות</span>
+                  </div>
+                  <div className="recipe-rating">
+                    <img src={starIcon} alt="דירוג" className="icon-style" />
+                    <span className="recipe-rating-star">{recipe.rating.toFixed(1)} </span>
+                  </div>
               </div>
             </Link>
           ))

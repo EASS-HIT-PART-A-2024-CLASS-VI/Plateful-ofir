@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "../App.css";
+import Slider from "react-slick";
+import "slick-carousel/slick/slick.css"; 
+import "slick-carousel/slick/slick-theme.css";
+import timeIcon from '../assets/icons/time-image.png';
+import categoriesIcon from '../assets/icons/category-image.png';
+import tagsIcon from '../assets/icons/tag-image.png';
 
 export default function Home() {
   const [recipes, setRecipes] = useState([]);
@@ -30,6 +36,17 @@ const categoryFilteredRecipes = selectedCategory
   ? filteredRecipes.filter(recipe => recipe.categories.includes(selectedCategory))
   : filteredRecipes;
 
+const sliderSettings = {
+  dots: true,
+  infinite: true,
+  speed: 500,
+  slidesToShow: 1,
+  slidesToScroll: 1,
+  autoplay: true,
+  autoplaySpeed: 3000,
+};
+  
+
 
   return (
     <div className="page-container">
@@ -44,22 +61,15 @@ const categoryFilteredRecipes = selectedCategory
       />
     </div>
 
-    {/* 📸 באנר ראשי עם מתכון מוצג */}
-    {featuredRecipe && (
-      <div className="featured-recipe">
-        <img
-          src={featuredRecipe.image_url ? `/api${featuredRecipe.image_url}` : "/api/static/default-recipe.jpg"}
-          alt={featuredRecipe.name}
-          onError={(e) => { e.target.src = "/api/static/default-recipe.jpg"; }}
-        />
-        <div className="absolute bottom-10 left-10 bg-white bg-opacity-80 px-10 py-6 rounded-lg shadow-md">
-          <h2 className="text-4xl font-bold text-gray-900">{featuredRecipe.name}</h2>
-          <p className="text-lg text-gray-700">{featuredRecipe.description || "מתכון מיוחד שכדאי לנסות!"}</p>
-          <Link to={`/recipes/${featuredRecipe.id}`} className="inline-block mt-4 bg-[#457B9D] text-white px-6 py-3 rounded-full hover:bg-[#1D3557] transition">
-            למתכון המלא
+    {recipes.length > 0 && (
+      <Slider {...sliderSettings} className="recipe-carousel">
+        {recipes.slice(0, 5).map((recipe) => (
+          <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="carousel-slide">
+            <img src={recipe.image_url ? `/api${recipe.image_url}` : "/api/static/default-recipe.jpg"} alt={recipe.name} />
+            <h2>{recipe.name}</h2>
           </Link>
-        </div>
-      </div>
+        ))}
+      </Slider>
     )}
 
     {/* 🏷️ קטגוריות */}
@@ -85,9 +95,25 @@ const categoryFilteredRecipes = selectedCategory
             className="recipe-image"
             onError={(e) => { e.target.src = "/api/static/default-recipe.jpg"; }}
           />
-          <div className="recipe-details">
-            <h4 className="recipe-title">{recipe.name}</h4>
-            <p className="recipe-time">⏳ זמן הכנה: {recipe.cooking_time} דקות</p>
+        <div className="recipe-details">
+        <h3 className="recipe-title">{recipe.name}</h3>
+          {/* 🏷️ קטגוריות */}
+          <div className="recipe-info">
+            <img src={categoriesIcon} alt="קטגוריות" className="info-icon" />
+            <span className="recipe-category">{recipe.categories || "ללא קטגוריה"}</span>
+          </div>
+
+          {/* 🔖 תגיות */}
+          <div className="recipe-info">
+            <img src={tagsIcon} alt="תגיות" className="info-icon" />
+            <span className="recipe-tags"> {recipe.tags}</span>
+          </div>
+
+          {/* ⏳ זמן הכנה */}
+          <div className="recipe-info">
+            <img src={timeIcon} alt="זמן הכנה" className="info-icon" />
+            <span className="recipe-time">{recipe.cooking_time} דקות</span>
+          </div>
           </div>
         </Link>
       ))}

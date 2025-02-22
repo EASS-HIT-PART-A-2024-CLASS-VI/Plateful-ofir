@@ -575,8 +575,14 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
         <h2 className="text-2xl font-bold mb-4">💬 תגובות</h2>
 
         {/* הצגת דירוג */}
-        <p>דירוג ממוצע: {rating.toFixed(2)}</p>
-        <RatingStars currentRating={rating} onRate={handleRateRecipe} />
+        <p>דירוג ממוצע: {recipe.rating.toFixed(2)}</p>
+        <div className="recipe-rating">
+          <RatingStars 
+            currentRating={userRating} 
+            onRate={handleRateRecipe} 
+            readOnly={false} // ✅ מאפשר למשתמש לדרג
+          />
+        </div>
 
         {/* 🔹 הצגת התגובות */}
         {commentTree.length > 0 ? (
