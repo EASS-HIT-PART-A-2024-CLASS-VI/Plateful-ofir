@@ -45,6 +45,8 @@
     border-radius: 50%;
     cursor: pointer;
     transition: opacity 0.3s;
+    display: inline-flex;
+
   }
   
   .user-icon:hover, .notification-icon:hover {

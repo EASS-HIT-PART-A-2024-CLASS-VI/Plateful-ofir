@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../App.css"; // קישור לקובץ ה-CSS
+import "../App.css"; 
 
 export default function CommentItem({ comment, onReply, level = 0 }) {
   const [replyText, setReplyText] = useState("");

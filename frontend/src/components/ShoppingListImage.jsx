@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import "./ShoppingListImage.css";
-import shoppingPhoto from "../assets/shopping-cart-guy.png";
+import shoppingPhoto from "../assets/icons/shopping-cart-guy.png";
 
 const ShoppingListImage = ({ ingredients, onClose }) => {
   const listRef = useRef(null);

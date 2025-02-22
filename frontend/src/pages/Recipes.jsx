@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import filterIcon from "../assets/filter-image.png"; // 📌 אייקון פילטר
+import filterIcon from "../assets/icons/filter-image.png"; // 📌 אייקון פילטר
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);

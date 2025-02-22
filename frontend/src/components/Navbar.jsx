@@ -3,10 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/UserContext";
 import { useChat } from '../context/ChatContext';
 import ChatDrawer from "../components/ChatDrawer";
-import userIcon from "../assets/user-image.png";  
-import notificationIcon from "../assets/notifi-image.png";  
+import userIcon from "../assets/icons/user-image.png";  
+import notificationIcon from "../assets/icons/notifi-image.png";  
 import logophoto from "../assets/logo.png";  
-import "./Navbar.css";  // ✅ מייבא את קובץ ה-CSS
+import "./Navbar.css"; 
 
 export default function Navbar() {
   const { user, setUser } = useAuth();

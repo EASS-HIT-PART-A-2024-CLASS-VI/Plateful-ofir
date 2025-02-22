@@ -8,16 +8,14 @@ import CommentItem from "../components/CommentItem";
 import ShoppingListPopup from "../components/ShoppingListPopup";
 import beepSound from "../assets/beep.wav";
 import { useChat } from '../context/ChatContext';
-import shareIcon from "../assets/share-image.png";
-import cookingTimeIcon from "../assets/time-image.png";
-import servingIcon from "../assets/serving-image.png";
-import tagicon from "../assets/tag-image.png";
-import pauseIcon from "../assets/pause-image.png";
-import stopIcon from "../assets/stop-image.png";
-import playIcon from "../assets/play-image.png";
-import TimerIcon from "../assets/timer-image.png";
-
-
+import shareIcon from "../assets/icons/share-image.png";
+import cookingTimeIcon from "../assets/icons/time-image.png";
+import servingIcon from "../assets/icons/serving-image.png";
+import tagicon from "../assets/icons/tag-image.png";
+import pauseIcon from "../assets/icons/pause-image.png";
+import stopIcon from "../assets/icons/stop-image.png";
+import playIcon from "../assets/icons/play-image.png";
+import TimerIcon from "../assets/icons/timer-image.png";
 
 import "../App.css";
 

@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ הוספת useNavigate
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/UserContext";
-import CreateRecipe from "./CreateRecipe";
-import editIcon from "../assets/edit-image.png";  
-import deleteIcon from "../assets/delete-image.png";
-import time from "../assets/time-image.png"
-import addIcon from "../assets/add-image.png"
+import editIcon from "../assets/icons/edit-image.png";  
+import deleteIcon from "../assets/icons/delete-image.png";
+import time from "../assets/icons/time-image.png"
+import addIcon from "../assets/icons/add-image.png"
 import "../App.css";
 
 
