@@ -146,7 +146,6 @@ const handleNotificationClick = async (notificationId) => {
           ref={chatDrawerRef}
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
-          title="עוזר מתכונים"
         /> 
       </div>
         {user ? (

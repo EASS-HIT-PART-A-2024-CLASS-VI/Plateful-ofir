@@ -624,7 +624,6 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
         ref={chatDrawerRef} 
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
-        title="עוזר מתכונים"
       />
     </div>
   );
