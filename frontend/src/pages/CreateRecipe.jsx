@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-export default function CreateRecipe({ fetchUserRecipes }) {
+export default function CreateRecipe({ fetchUserRecipes  = () => {}}) {
   const [newRecipe, setNewRecipe] = useState({
     name: "",
     preparation_steps: "",
@@ -20,12 +20,18 @@ export default function CreateRecipe({ fetchUserRecipes }) {
   };
 
   const handleImageChange = (e) => {
-    setImage(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+    }
   };
 
   const handleIngredientChange = (index, field, value) => {
     const updatedIngredients = [...ingredients];
-    updatedIngredients[index][field] = value;
+    updatedIngredients[index] = {
+      ...updatedIngredients[index],
+      [field]: value
+  };
     setIngredients(updatedIngredients);
   };
 
@@ -43,7 +49,10 @@ export default function CreateRecipe({ fetchUserRecipes }) {
 
   const handleTimerChange = (index, field, value) => {
     const updatedTimers = [...timers];
-    updatedTimers[index][field] = value;
+    updatedTimers[index] = {
+      ...updatedTimers[index],
+      [field]: value
+    };
     setTimers(updatedTimers);
   };
 
@@ -54,58 +63,73 @@ export default function CreateRecipe({ fetchUserRecipes }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
   
-    if (!userId) {
-      toast.error("Please login to create a recipe.");
-      return;
-    }
-  
-
-  const formattedTimers = timers.map(timer => ({
-      step_number: parseInt(timer.step_number, 10),  // ✅ להמיר למספר
-      duration: parseInt(timer.duration, 10),  // ✅ להמיר למספר
-      label: timer.label
-  }));
-
-    const formData = new FormData();
-    Object.entries(newRecipe).forEach(([key, value]) => {
-      formData.append(key, typeof value === "number" ? value.toString() : value);
-    });
-    formData.append("creator_id", userId);
-    formData.append("ingredients", JSON.stringify(ingredients.map(ing => ({
-      ...ing,
-      quantity: parseFloat(ing.quantity)
-    }))));
-
-  formData.append("timers", JSON.stringify(formattedTimers));
-    console.log("📤 Sending Recipe Data:", Object.fromEntries(formData));
-  
-    if (image) formData.append("image", image); // מוודא שהתמונה נשלחת אם הועלתה
-  
     try {
+      if (!userId) {
+        toast.error("Please login to create a recipe.");
+        return;
+      }
+  
+      const formattedTimers = timers.map(timer => ({
+        step_number: parseInt(timer.step_number, 10) || 0,
+        duration: parseInt(timer.duration, 10) || 0,
+        label: timer.label || ""
+      }));
+
+      const formattedIngredients = ingredients.map(ing => ({
+        name: ing.name || "",
+        quantity: parseFloat(ing.quantity) || 0,
+        unit: ing.unit || ""
+      }));
+
+      const formData = new FormData();
+      Object.entries(newRecipe).forEach(([key, value]) => {
+        formData.append(key, value?.toString() || "");
+      });
+
+      formData.append("creator_id", userId);
+      formData.append("ingredients", JSON.stringify(formattedIngredients));
+      formData.append("timers", JSON.stringify(formattedTimers));
+
+      if (image) {
+        formData.append("image", image);
+      }
+  
       const response = await fetch("/api/recipes/", {
         method: "POST",
         body: formData,
       });
-  
+
       const data = await response.json();
-      console.log("📥 Received Response:", data);
-      if (!response.ok) throw new Error(data.detail || "Failed to create recipe");
+      
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to create recipe");
+      }
   
       toast.success("Recipe created successfully!");
   
-      // אחרי ההגשה, מאפס את שדה התמונה בלבד
-      setNewRecipe({ name: "", preparation_steps: "", cooking_time: "", servings: "", categories: "", tags: "" });
-      setImage(null);  // מאפס את שדה התמונה כדי שלא תישאר מוצגת
-      setIngredients([]);  // מנקה את המצרכים
-      setTimers([]);  // מנקה את הטיימרים אם ישנם
+      // איפוס הטופס
+      setNewRecipe({
+        name: "",
+        preparation_steps: "",
+        cooking_time: "",
+        servings: "",
+        categories: "",
+        tags: ""
+      });
+      setImage(null);
+      setIngredients([]);
+      setTimers([]);
   
-      fetchUserRecipes(); // Fetch the updated list of recipes
+      // וידוא שהפונקציה קיימת לפני הקריאה
+      if (typeof fetchUserRecipes === 'function') {
+        fetchUserRecipes();
+      }
+
     } catch (error) {
       console.error("❌ Error creating recipe:", error);
       toast.error(error.message || "Failed to create recipe.");
     }
   };
-  
   
   return (
     <div className="p-6 max-w-4xl mx-auto">
