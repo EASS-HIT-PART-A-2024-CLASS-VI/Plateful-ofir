@@ -1,4 +1,5 @@
-# **Plateful** 🍲
+![Plateful Logo](./frontend/src/assets/logo.png)
+
 
 **Plateful** is a recipe management system that enables users to create, share, and organize recipes while catering to dietary preferences and managing shopping lists. The API provides robust features like automatic nutrition calculation, user profiles, customizable dietary preferences (e.g., vegan, gluten-free), and shopping list generation.
 
@@ -17,7 +18,22 @@ Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, main
 - **Cooking Timers:** Set timers for each step in the recipe preparation process.
 - **Recipe Rating System:** Rate recipes and view them based on ratings.
 - **Image Uploads:** Users can upload images for their recipes.
+- **AI Capabilities:** AI-powered features for smart recipe suggestions, ingredient substitutions, and nutritional analysis.
 - **Dockerized Deployment:** Easily run the application in a containerized environment.
+
+---
+
+## **AI Capabilities** 🤖
+
+Plateful incorporates **AI-powered features** to enhance the user experience and optimize recipe management:
+
+- **Smart Recipe Suggestions:** AI-driven recommendations based on user preferences, past interactions, and dietary restrictions.
+- **Ingredient Substitutions:** Suggests alternative ingredients for missing or unavailable items.
+- **Nutritional Analysis:** Uses AI to estimate calories, macronutrients, and health scores based on recipe ingredients.
+- **AI Chatbot (Future Enhancement):** A chatbot assistant to help users create and modify recipes, answer cooking-related queries, and provide smart meal planning tips.
+- **Automated Cooking Instructions:** Converts text-based recipes into step-by-step guided instructions with time estimates.
+
+These AI features improve personalization, accessibility, and efficiency, making **Plateful** a smarter cooking assistant! 🍽️✨
 
 ---
 
@@ -44,6 +60,7 @@ Below is the high-level system architecture of Plateful:
 - **Redis** - Caching layer to improve performance.
 - **File Storage (S3 or local)** - Stores images for recipes.
 - **Docker** - Manages containerized services.
+- **AI Services** - Machine learning models integrated for AI-driven recipe recommendations.
 
 ---
 
