@@ -9,13 +9,17 @@ from models.recipe_model import Recipe, Ingredient, NutritionalInfo
 from models.user_model import User
 from db.database import SessionLocal, init_db
 from passlib.context import CryptContext
+from services.ai_service import calculate_nutritional_info  # ✅ חישוב ערכים תזונתיים
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+STATIC_RECIPE_DIR = "static/recipes"  # ✅ שמירת נתיב לתיקיית התמונות
+os.makedirs(STATIC_RECIPE_DIR, exist_ok=True)  # ✅ יצירת התיקייה אם היא לא קיימת
 
 def load_seed_data(db: Session):
     try:
         print("Starting seed data loading process...")
-        
+
         # אתחול מסד הנתונים אם הוא לא מאותחל
         init_db()
 
@@ -50,22 +54,30 @@ def load_seed_data(db: Session):
                 "servings": 4,
                 "categories": "איטלקי",
                 "tags": "צמחוני,פסטה",
-                "image_url": "/static/default-recipe.jpg",
+                "image_filename": "pasta.jpg",  # ✅ שם קובץ התמונה
                 "ingredients": [
                     {"name": "פסטה", "quantity": 500, "unit": "גרם"},
                     {"name": "רוטב עגבניות", "quantity": 400, "unit": "מ\"ל"}
-                ],
-                "nutritional_info": {
-                    "calories": 450,
-                    "protein": 12,
-                    "carbs": 65,
-                    "fats": 15
-                }
+                ]
+            },
+            {
+                "name": "שקשוקה",
+                "preparation_steps": "לטגן בצל, להוסיף עגבניות, לתבל ולהכניס ביצים",
+                "cooking_time": 20,
+                "servings": 2,
+                "categories": "ישראלי",
+                "tags": "ארוחת בוקר,ביצים",
+                "image_filename": "shakshuka.jpg",  # ✅ שם קובץ התמונה
+                "ingredients": [
+                    {"name": "ביצים", "quantity": 2, "unit": "יחידות"},
+                    {"name": "עגבניות", "quantity": 3, "unit": "יחידות"}
+                ]
             }
         ]
 
         # הוספת מתכונים למסד הנתונים
         for recipe_data in seed_recipes:
+            image_path = f"/static/recipes/{recipe_data['image_filename']}"
             new_recipe = Recipe(
                 name=recipe_data["name"],
                 preparation_steps=recipe_data["preparation_steps"],
@@ -74,11 +86,12 @@ def load_seed_data(db: Session):
                 categories=recipe_data["categories"],
                 tags=recipe_data["tags"],
                 creator_id=admin_user.id,
-                image_url=recipe_data["image_url"]
+                image_url=image_path  # ✅ שימוש בתמונה אמיתית
             )
             db.add(new_recipe)
             db.flush()  # לקבלת ID של המתכון
 
+            ingredients_list = []
             for ingredient in recipe_data["ingredients"]:
                 new_ingredient = Ingredient(
                     name=ingredient["name"],
@@ -87,14 +100,18 @@ def load_seed_data(db: Session):
                     recipe_id=new_recipe.id
                 )
                 db.add(new_ingredient)
+                ingredients_list.append(ingredient)
 
-            nutrition = recipe_data["nutritional_info"]
+            # ✅ חישוב ערכים תזונתיים
+            nutrition_data = calculate_nutritional_info(ingredients_list, new_recipe.servings)
+
+            # ✅ שמירת הערכים התזונתיים שחושבו
             new_nutrition = NutritionalInfo(
                 recipe_id=new_recipe.id,
-                calories=nutrition["calories"],
-                protein=nutrition["protein"],
-                carbs=nutrition["carbs"],
-                fats=nutrition["fats"]
+                calories=nutrition_data["calories"],
+                protein=nutrition_data["protein"],
+                carbs=nutrition_data["carbs"],
+                fats=nutrition_data["fats"]
             )
             db.add(new_nutrition)
 
