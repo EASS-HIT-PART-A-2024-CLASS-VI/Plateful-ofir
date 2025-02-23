@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import "./ShoppingListImage.css";
 import shoppingPhoto from "../assets/icons/shopping-cart-guy.png";
+import downloadIcon from "../assets/icons/download-image.png";
 
 const ShoppingListImage = ({ ingredients, onClose }) => {
   const listRef = useRef(null);
@@ -73,10 +74,14 @@ const ShoppingListImage = ({ ingredients, onClose }) => {
         </div>
 
       <div className="download-btn-container"/>
-        <button onClick={handleDownloadImage} className="download-btn">
-            📸 הורד כתמונה
-        </button>
+          <button
+            className="filter-button"
+            onClick={handleDownloadImage}
+          >
+            <img src={downloadIcon} alt="Filter" className="filter-icon" />
+          </button>
     </div>
+    
   );
 };
 

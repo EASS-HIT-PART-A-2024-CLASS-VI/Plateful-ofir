@@ -1,6 +1,6 @@
 # **Plateful** 🍲
 
-**Plateful** is a recipe management system that enables users to create, share, and organize recipes, while catering to dietary preferences and managing shopping lists. The API provides robust features like nutrition calculation, user profiles, customizable preferences (e.g., vegan, gluten-free), and shopping list generation.
+**Plateful** is a recipe management system that enables users to create, share, and organize recipes while catering to dietary preferences and managing shopping lists. The API provides robust features like automatic nutrition calculation, user profiles, customizable dietary preferences (e.g., vegan, gluten-free), and shopping list generation.
 
 Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, maintainable, and developer-friendly.
 
@@ -8,73 +8,74 @@ Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, main
 
 ## **Features** ✨
 
-- **Recipe Management:** Create, update, delete, and retrieve recipes with title, ingredients, preparation steps, and time estimates.
+- **Recipe Management:** Create, update, delete, and retrieve recipes with titles, ingredients, preparation steps, and estimated cooking times.
 - **Categories and Tags:** Organize recipes by categories (e.g., breakfast, lunch) and tags (e.g., vegan, gluten-free).
-- **Nutritional Information:** Automatically calculate nutritional values (e.g., calories, protein) based on ingredients.
+- **Automatic Nutritional Information:** Calculates calories, protein, carbs, and fats based on ingredients.
 - **User Profiles:** Create user profiles, save recipes, and share them with others.
 - **Dietary Preferences:** Filter recipes based on preferences such as vegan or gluten-free.
-- **Shopping List:** Automatically generate shopping lists based on recipe ingredients.
-- **Timers:** Add timers for each step in the recipe preparation process.
-- **Recipe Rating:** Rate recipes and view them based on ratings.
+- **Shopping List Generator:** Automatically generates a shopping list based on recipe ingredients.
+- **Cooking Timers:** Set timers for each step in the recipe preparation process.
+- **Recipe Rating System:** Rate recipes and view them based on ratings.
+- **Image Uploads:** Users can upload images for their recipes.
 - **Dockerized Deployment:** Easily run the application in a containerized environment.
 
 ---
 
-## **Technologies** 🛠️
+## **Technologies Used** 🛠️
 
-- **Language:** Python (FastAPI)
-- **Containerization:** Docker
+- **Backend:** FastAPI, SQLAlchemy, PostgreSQL, Redis
+- **Frontend:** React (with Tailwind CSS)
+- **Containerization:** Docker & Docker Compose
+- **Authentication:** JWT-based authentication
+
+---
+
+## **System Architecture** 🏗️
+
+Below is the high-level system architecture of Plateful:
+
+![Architecture Diagram](./frontend/src/assets/Architecture-image.png)
+
+
+💡 **Component Breakdown:**
+- **React** - User interface for managing recipes.
+- **FastAPI** - API layer handling business logic and user requests.
+- **PostgreSQL** - Database for storing user and recipe data.
+- **Redis** - Caching layer to improve performance.
+- **File Storage (S3 or local)** - Stores images for recipes.
+- **Docker** - Manages containerized services.
 
 ---
 
 ## **Project Structure** 📂
 
 ```plaintext
-│   .gitignore                     # Specifies which files and folders to exclude from Git tracking
-│   README.md                      # Project documentation and instructions
-  
-├── .vscode/                       # Visual Studio Code configuration folder 
-│   ├── settings.json              # Custom settings for VS Code 
-  
-├── backend/                       # Backend application (FastAPI)
-│   ├── .env                       # Environment variables 
+C:/
+├───backend/                      # Backend application (FastAPI)
+│   ├───db/                       # Database management
+│   ├───models/                   # Database models
+│   ├───services/                 # Business logic
+│   ├───static/                   # Recipe images
+│   ├───tests/                    # Automated backend tests
+│   ├───Dockerfile                # Dockerfile for backend service
 │   ├── crud.py                    # CRUD operations
-│   ├── docker-compose.yml         # Docker Compose configuration for running services
-│   ├── Dockerfile                 # Dockerfile for containerizing the backend
-│   ├── main.py                    # Main FastAPI application entry point
-│   ├── pytest.ini                 # Pytest configuration file
-│   ├── requirements.txt           # Python dependencies for the backend
-│   ├── __init__.py                # Marks this directory as a Python package
-│   │     
-│   ├── db/                        # Database management module
-│   │   ├── database.py            # Database connection and session handling
-│   │   ├── __init__.py            # Marks this directory as a Python package
-│   │     
-│   ├── models/                    # Data models for the application
-│   │   ├── base.py                # SQLAlchemy base class for models
-│   │   ├── recipe_model.py        # Recipe-related database models
-│   │   ├── user_model.py          # User-related database models
-│   │   ├── __init__.py            # Marks this directory as a Python package
-│   │     
-│   ├── services/                  # Business logic and service layer
-│   │   ├── ai_service.py          # AI-related functions 
-│   │   ├── image_service.py       # Handles image uploads and retrieval
-│   │   ├── recipe_service.py      # Logic for managing recipes
-│   │   ├── timer_service.py       # Cooking timer management
-│   │   ├── user_service.py        # Handles user management and preferences
-│   │   ├── __init__.py            # Marks this directory as a Python package
-│   │ 
-│   ├── tests/                     # Automated tests for the backend
-│   │   ├── conftest.py            # Pytest fixture configurations
-│   │   ├── test_ai_service.py     # Tests for AI-related functionalities
-│   │   ├── test_database.py       # Tests for database operations
-│   │   ├── test_image_service.py  # Tests for image upload service
-│   │   ├── test_integration.py    # End-to-end tests covering multiple services
-│   │   ├── test_models.py         # Tests for database models
-│   │   ├── test_services.py       # Unit tests for service layer
-│   │
-└── frontend/                      # Frontend application 
-    ├── Recipe App Frontend        # Placeholder for the frontend code 
+│   ├───docker-compose.yml        # Docker Compose configuration
+│   ├───requirements.txt          # Python dependencies
+│   ├───main.py                   # FastAPI main application
+│
+├───frontend/                     # Frontend application (React)
+│   ├───public/                   # Public files (index.html, favicon)
+│   ├───src/                      # React source files
+│   │   ├───assets/icons/         # Static assets (icons, images)
+│   │   ├───components/           # React UI components
+│   │   ├───context/              # Context API for state management
+│   │   ├───pages/                # Pages for the web app
+│   ├───Dockerfile                # Dockerfile for frontend service
+│   ├───package.json              # Frontend dependencies
+│   ├───tailwind.config.js        # Tailwind CSS configuration
+├───.gitignore                    # Specifies which files and folders to exclude from Git tracking
+├─── README.md                    # Project documentation and instructions
+├─── docker-compose.yml           # Docker Compose configuration for running services
 
 ```
 
@@ -84,49 +85,80 @@ Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, main
 
 ### **Prerequisites**
 
-Ensure the following tools are installed:
+Ensure you have the following installed:
 
-- Docker 🐳
-- Python 3.9+
+- **Docker** 🐳 
+- **Python 3.9+** 
+- **Node.js & npm** 
 
-### **Running the Application**
+### **Set Up Environment Variables**
+
+Before running the project, create an `.env` file inside the **backend** directory:
+
+```sh
+cp backend/.env.example backend/.env
+```
+
+Edit the `.env` file with your configuration:
+
+```
+DATABASE_URL=postgresql://postgres:password123@postgres:5432/plateful
+GEMINI_API_KEY=your_secret_key_here
+USDA_API_KEY=your_secret_key_here
+```
+
+---
+
+## **Running the Application (Dockerized)**
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/EASS-HIT-PART-A-2024-CLASS-VI/Plateful-ofir
    cd plateful
    ```
-
-2. Start the application:
+2. Build and start the containers:
    ```bash
    docker-compose up --build
    ```
-3. Access the API:  
-   Once the application is running, navigate to: 🔗 http://localhost:8000
+3. Once running, access the app:
+   - **Backend API Docs**: 🔗 [http://localhost:8000/docs](http://localhost:8000/docs)
+   - **Frontend App**: 🔗 [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## **Testing** 🧪
 
-Plateful includes both unit tests and integration tests to ensure reliability and performance.
+### **Run All Tests**
+```bash
+docker-compose backend pytest
+```
+### **Run Specific Tests**
+```bash
+pytest backend/tests/test_recipes.py  # Test recipes functionality
+pytest backend/tests/test_users.py    # Test user authentication
+```
 
-- **Run Unit Tests:**
-  ```bash
-  pytest backend/unit_tests.py
-  ```
-- **Run Integration Tests:**
-  ```bash
-  pytest backend/integration_test.py
-  ```
-- **Run All Tests:**
-  ```bash
-  pytest
-  ```
+---
+
+## **Demo Video** 🎥
+
+_A video demonstrating the system will be added here._
+
+[![Watch Demo](https://img.youtube.com/vi/your-video-id-here/0.jpg)](https://www.youtube.com/watch?v=your-video-id-here)
+
+---
+
+## **API Documentation** 📖
+
+For a complete list of API endpoints and usage examples, see the [API Reference](./docs/API.md).
 
 ---
 
 ## **Contact Info** 📬
 
 **Ofir Itskovich**  
- Email: ofir8530@gmail.com  
- GitHub: [ofir8530](https://github.com/ofir8530)
+📧 Email: ofir8530@gmail.com  
+🔗 GitHub: [ofir8530](https://github.com/ofir8530)
+
+---
+
