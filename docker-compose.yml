@@ -29,30 +29,25 @@ services:
       timeout: 3s
       retries: 5
 
-  backend:  # ✅ הוספת שם השירות
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: plateful_backend
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:  # ✅ העברת `env_file` למיקום הנכון
-      - ./backend/.env
-    environment:
-      DATABASE_URL: "postgresql://postgres:password123@postgres:5432/plateful"
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend/static:/app/static  # ✅ תיקון גישה לקבצים סטטיים
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://backend:8000"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    networks:
-      - plateful_network
+  backend:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile
+      container_name: plateful_backend
+      depends_on:
+        postgres:
+          condition: service_healthy
+      env_file:
+        - ./backend/.env
+      environment:
+        DATABASE_URL: "postgresql://postgres:password123@postgres:5432/plateful"
+      ports:
+        - "8000:8000"
+      volumes:
+        - ./backend/static:/app/static
+      networks:
+        - plateful_network
+      command: sh -c "python /app/services/seed_data.py && uvicorn main:app --host 0.0.0.0 --port 8000"
 
   frontend:
     build:

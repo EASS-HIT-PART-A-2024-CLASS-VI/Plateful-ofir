@@ -14,7 +14,7 @@ from models.recipe_model import (Comment, Recipe, Ingredient, NutritionalInfo, S
 from models.user_model import User
 from pydantic import BaseModel, EmailStr, field_validator
 from services.ai_service import setup_ai_routes
-from db.database import engine, get_db, init_db
+from db.database import engine, get_db, init_db, SessionLocal, Base
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from models.recipe_model import Comment
@@ -22,17 +22,24 @@ from fastapi.staticfiles import StaticFiles
 from services.ai_service import calculate_nutritional_info
 from services.notification_service import create_notification
 from datetime import datetime, timedelta, timezone
+from services.seed_data import load_seed_data
 
+Base.metadata.create_all(bind=engine)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB on startup
-    init_db()
+    print("📢 Initializing database...")
+    init_db()  # ✅ יצירת כל הטבלאות במסד הנתונים
+    print("✅ Database initialized successfully!")
+
+    db = SessionLocal()
+    load_seed_data(db)  # ✅ טעינת נתוני ברירת המחדל אחרי יצירת הטבלאות
+    db.close()
+
     yield
-    # Clean up resources on shutdown if needed
-    pass
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -137,7 +144,6 @@ class CommentRequest(BaseModel):
 # Recipe endpoints
 STATIC_DIR = "static"
 os.makedirs(STATIC_DIR, exist_ok=True)  # ודא שהתיקייה קיימת
-
 
 @app.get("/")
 async def root():
