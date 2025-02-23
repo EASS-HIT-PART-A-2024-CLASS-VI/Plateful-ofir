@@ -1,4 +1,4 @@
-from backend.services.ai_service import calculate_nutritional_info
+from services.ai_service import calculate_nutritional_info
 from sqlalchemy.orm import Session
 from models.recipe_model import CookingTimer, Recipe, NutritionalInfo, Ingredient
 from models.user_model import UserProfile
@@ -58,7 +58,6 @@ def create_recipe(db: Session, recipe_data: dict):
             carbs=nutrition_data["carbs"],
             fats=nutrition_data["fats"],
         )
-        nutrition_data = calculate_nutritional_info(ingredients_data, recipe.servings)
 
     print(f"📊 Nutrition data received from API: {nutrition_data}")
 

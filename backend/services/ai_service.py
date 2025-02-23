@@ -56,32 +56,20 @@ def validate_hebrew_response(text: str) -> bool:
     return hebrew_chars / total_chars > 0.3 if total_chars > 0 else False
 
 async def translate_text(text: str, src="auto", dest="en", max_retries=3) -> str:
-    """Helper function to handle async translation with retries and validation"""
+    """מתרגם טקסט עם `deep_translator` במקום `googletrans`"""
     for attempt in range(max_retries):
         try:
-            # If text is already in Hebrew and dest is Hebrew, return as is
-            if dest == "he" and is_hebrew(text):
-                return text
-            
-            translation = await translator.translate(text, src=src, dest=dest)
-            translated_text = translation.text
-
-            # Validate Hebrew output if that's the target language
-            if dest == "he" and not validate_hebrew_response(translated_text):
-                if attempt == max_retries - 1:
-                    raise ValueError("Failed to generate valid Hebrew translation")
-                continue
-
+            translated_text = GoogleTranslator(source=src, target=dest).translate(text)
+            print(f"🔍 תרגום בפועל: {translated_text}")  # ✅ הוספת debug
             return translated_text
-
         except Exception as e:
             if attempt == max_retries - 1:
                 raise HTTPException(
                     status_code=500,
                     detail=f"Translation failed after {max_retries} attempts: {str(e)}"
                 )
-            await asyncio.sleep(1)  # Short delay before retry
-
+            await asyncio.sleep(1)
+            
 def setup_ai_routes(app):
     @app.post("/suggest_recipe", response_model=dict)
     async def suggest_recipe(request: RecipeRequest):

@@ -18,13 +18,15 @@ export default function Home() {
     fetch("/api/recipes/")
       .then((response) => response.json())
       .then((data) => {
+        console.log("Fetched Recipes:", data); 
         setRecipes(data);
         if (data.length > 0) {
-          setFeaturedRecipe(data[0]); // מתכון ראשי
+          setFeaturedRecipe(data[0]); 
         }
       })
       .catch((error) => console.error("Error fetching recipes:", error));
   }, []);
+  
 
   // פונקציה לסינון מתכונים
 const filteredRecipes = recipes.filter(recipe =>
@@ -63,12 +65,16 @@ const sliderSettings = {
 
     {recipes.length > 0 && (
       <Slider {...sliderSettings} className="recipe-carousel">
-        {recipes.slice(0, 5).map((recipe) => (
-          <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="carousel-slide">
-            <img src={recipe.image_url ? `/api${recipe.image_url}` : "/api/static/default-recipe.jpg"} alt={recipe.name} />
-            <h2>{recipe.name}</h2>
-          </Link>
-        ))}
+        {Array.from(new Set(recipes.map(recipe => recipe.id))) 
+          .map((id) => {
+            const recipe = recipes.find(r => r.id === id);
+            return (
+              <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="carousel-slide">
+                <img src={recipe.image_url ? `/api${recipe.image_url}` : "/api/static/default-recipe.jpg"} alt={recipe.name} />
+                <h2>{recipe.name}</h2>
+              </Link>
+            );
+          })}
       </Slider>
     )}
 

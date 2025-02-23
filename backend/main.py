@@ -1,32 +1,27 @@
-from urllib.request import Request
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Query, Form, Security, Header
-from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Union
-from datetime import datetime, timedelta
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials,OAuth2PasswordBearer
 
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form, Header
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials,OAuth2PasswordBearer
 from models.notification_model import Notification
 from models.security import verify_password, create_access_token
-from jose import JWTError, jwt 
+from jose import jwt 
 import json
 import shutil
 import os
 from passlib.context import CryptContext
-from models.recipe_model import (
-    Comment, Recipe, Ingredient, NutritionalInfo, SharedRecipe, 
-    ShoppingList,Rating, CookingTimer
-)
+from models.recipe_model import (Comment, Recipe, Ingredient, NutritionalInfo, SharedRecipe,Rating, CookingTimer)
 from models.user_model import User
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 from services.ai_service import setup_ai_routes
 from db.database import engine, get_db, init_db
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from models.recipe_model import Comment
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware
 from services.ai_service import calculate_nutritional_info
-from services.notification_service import create_notification, get_user_notifications, mark_notifications_as_read
+from services.notification_service import create_notification
+from datetime import datetime, timedelta, timezone
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 
@@ -60,7 +55,7 @@ ALGORITHM = "HS256"
 def create_access_token(user_id: int):
     payload = {
         "sub": str(user_id),
-        "exp": datetime.utcnow() + timedelta(hours=24)
+        "exp": datetime.now(timezone.utc) + timedelta(hours=24)
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -634,7 +629,7 @@ async def add_comment(
         user_id=comment_data.user_id,
         username=comment_data.username,  
         content=comment_data.content,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         parent_id=comment_data.parent_id
     )
 
@@ -672,7 +667,7 @@ async def get_comments(recipe_id: int, db: Session = Depends(get_db)):
 @app.post("/register", include_in_schema=True)
 async def register_user(user: UserRegister, db: Session = Depends(get_db)):
     try:
-        print("📥 Data received:", user.dict())  # ✅ הדפסת הנתונים שמתקבלים
+        print("📥 Data received:", user.model_dump())
 
         existing_user = db.query(User).filter(User.email == user.email).first()
         if existing_user:
@@ -725,7 +720,7 @@ async def reply_to_comment(
         user_id=comment_data.user_id,
         username=comment_data.username,
         content=comment_data.content,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         parent_id=comment_id
     )
 

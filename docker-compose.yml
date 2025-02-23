@@ -16,6 +16,19 @@ services:
     networks:
       - plateful_network
 
+  redis:
+    image: redis:latest
+    container_name: plateful_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - plateful_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:  # ✅ הוספת שם השירות
     build:
       context: ./backend

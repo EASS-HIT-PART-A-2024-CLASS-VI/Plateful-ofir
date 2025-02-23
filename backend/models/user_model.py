@@ -3,6 +3,8 @@ from typing import Optional
 from sqlalchemy import Column, Integer, String, JSON, Date
 from sqlalchemy.orm import relationship
 from models.base import Base
+from models.notification_model import Notification
+
 
 class UserProfile(BaseModel):
     id: int
@@ -34,7 +36,7 @@ class User(Base):
 
     recipes = relationship("Recipe", back_populates="creator") 
     shopping_lists = relationship("ShoppingList", back_populates="user")
-    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship(Notification, back_populates="user", cascade="all, delete-orphan")
 
 class UserCreate(BaseModel):
     username: str

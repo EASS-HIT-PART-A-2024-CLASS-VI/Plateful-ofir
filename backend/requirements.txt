@@ -19,5 +19,5 @@ pyjwt
 bcrypt==4.0.1
 passlib
 python-jose[cryptography]
-
+pillow==11.1.0
 
