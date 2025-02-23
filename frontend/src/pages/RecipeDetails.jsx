@@ -16,6 +16,7 @@ import pauseIcon from "../assets/icons/pause-image.png";
 import stopIcon from "../assets/icons/stop-image.png";
 import playIcon from "../assets/icons/play-image.png";
 import TimerIcon from "../assets/icons/timer-image.png";
+import restartIcon from "../assets/icons/re-do-timer-image.png";
 
 import "../App.css";
 
@@ -485,11 +486,13 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
           scaledIngredients.map((ingredient, index) => (
           <li key={index} className="ingredient-item">
             <span>{ingredient.name} - {ingredient.quantity} {ingredient.unit}</span>
-            <button 
-              onClick={() => handleFindSubstitute(ingredient.name)} 
+
+            <button onClick={() =>  handleFindSubstitute(ingredient.name)}
               className="substitute-btn">
-              🔄 מצא תחליף
+              <img src={restartIcon} alt="Restart" className="play_again-button" /> מצא תחליף
+
             </button>
+
           </li>
 
           ))): (
@@ -555,12 +558,11 @@ if (error) return <p className="text-center text-red-500 mt-10">שגיאה: {err
                   )}
 
                   {activeTimers[stepNumber] === 0 && (
-                    <button
-                      onClick={() => startTimer(stepNumber, timer.duration)}
-                      className="play_again_button"
-                    >
-                      🔄 
-                    </button>
+                    <button onClick={() => startTimer(stepNumber, timer.duration)}
+                          className="play_again_button">
+                    <img src={restartIcon} alt="Restart" className="play_again-button" />
+                  </button>
+
               )}
             </div>
           )}

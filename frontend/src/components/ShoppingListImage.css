@@ -35,7 +35,7 @@
 /* אייקון סגירה (X) בפינה השמאלית העליונה */
 .close-btn {
     position: absolute;
-    top: 2px;
+    top: 4px;
     left: 10px;
     background: none;
     border: none;

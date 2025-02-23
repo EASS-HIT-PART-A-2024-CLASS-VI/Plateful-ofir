@@ -73,14 +73,12 @@ const ShoppingListImage = ({ ingredients, onClose }) => {
         </div>
         </div>
 
-      <div className="download-btn-container"/>
-          <button
-            className="filter-button"
-            onClick={handleDownloadImage}
+        <div className="download-btn-container"/>
+          <button onClick={handleDownloadImage}
           >
-            <img src={downloadIcon} alt="Filter" className="filter-icon" />
+            <img src={downloadIcon} alt="Filter" className="download-icon" />
           </button>
-    </div>
+        </div>
     
   );
 };

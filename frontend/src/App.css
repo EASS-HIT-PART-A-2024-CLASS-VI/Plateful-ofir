@@ -391,8 +391,26 @@
 }
 
 .timer-icon {
-  width: 30px; /* עדכן גודל לפי הצורך */
+  width: 30px; 
   height: 30px;
+}
+
+.substitute-btn {
+  color: rgb(0, 0, 0);
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: 0.3s;
+  align-self: center;
+  display: flex;
+  gap: 10px;
+}
+
+.play_again-button{
+  width: 20px; 
+  height: 20px;
+  
 }
 
 /* 🔹 תיבת הוספת תגובה */
@@ -573,6 +591,37 @@
   margin-bottom: 10px;
   font-size: 16px;
 }
+.download-btn-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.download-button {
+  display: flex;
+  align-items: center;
+  color: rgb(0, 0, 0);
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.download-button:hover {
+  transform: scale(1.05);
+}
+
+.download-icon {
+  width: 40px;
+  height: 40px;
+  margin-right: 300px;
+}
+
+.download-text {
+  font-size: 16px;
+  font-weight: bold;
+}
+
 
 .open-modal-btn {
   background-color: #4CAF50;
