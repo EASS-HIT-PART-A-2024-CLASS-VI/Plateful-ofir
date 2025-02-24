@@ -1,6 +1,6 @@
 ![Plateful Logo](./frontend/src/assets/logo.png)
 
-**Plateful** is a recipe management system that enables users to create, share, and organize recipes while catering to dietary preferences and managing shopping lists. The API provides robust features like automatic nutrition calculation, user profiles, customizable dietary preferences (e.g., vegan, gluten-free), and shopping list generation.
+**Plateful** is a recipe management system that enables users to create, share, and organize recipes while catering to dietary preferences and managing shopping lists. The API provides robust features like automatic nutrition calculation, user profiles, customizable dietary preferences (e.g., vegan, gluten-free), and shopping list generation. Additionally, Plateful integrates advanced AI capabilities, offering personalized recipe recommendations, smart ingredient substitution suggestions, expert answers to cooking questions, and an interactive chat interface to further enhance the cooking experience.
 
 Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, maintainable, and developer-friendly.
 
@@ -168,7 +168,7 @@ pytest backend/tests/test_users.py    # Test user authentication
 
 _A video demonstrating the system will be added here._
 
-[![Watch Demo](https://img.youtube.com/vi/your-video-id-here/0.jpg)](https://www.youtube.com/watch?v=your-video-id-here)
+[![Watch Demo](https://youtu.be/Zsxy7hw37fw)
 
 ---
 
