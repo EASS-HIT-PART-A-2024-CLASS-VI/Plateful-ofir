@@ -748,6 +748,9 @@
   align-items: center;
   gap: 10px;
   margin-top: 5px;
+  left: 10px;
+  bottom: 10px;
+  position: absolute;
 }
 
 .recipe-info {

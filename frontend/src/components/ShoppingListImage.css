@@ -6,17 +6,28 @@
     justify-content: center;
     position: relative;
 }
+.close-btn {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #555;
+}
   
 .shopping-list-paper {
     background-color: #fffbe0;
     width: 340px;
-    min-height: 450px;
+    height: auto; /* גובה דינמי */
     border-radius: 12px;
     box-shadow: 2px 6px 10px rgba(0, 0, 0, 0.2);
     padding: 20px;
     position: relative;
     border: 1px solid #d4c08f;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column; /* מבנה עמודות כדי לאפשר הרחבה טבעית */
 }
   
 .shopping-list-header {
@@ -31,19 +42,15 @@
     justify-content: center;
     position: relative;
 }
-  
-/* אייקון סגירה (X) בפינה השמאלית העליונה */
-.close-btn {
-    position: absolute;
-    top: 4px;
-    left: 10px;
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    color: #555;
+
+/* התוכן של הרשימה יתפוס את כל השטח הדרוש */
+.shopping-list-content {
+    flex-grow: 1; /* מאפשר לרשימה לגדול דינמית */
+    overflow-y: auto; /* מאפשר גלילה אם יש צורך */
+    padding-bottom: 10px; /* מרווח קטן כדי שלא יכוסה */
 }
-  
+
+/* עיצוב פריטי רשימה */
 .shopping-list-item {
     display: flex;
     align-items: center;
@@ -77,18 +84,20 @@
     background-color: #4caf50;
     border-color: #4caf50;
 }
-  
+
+/* התאמה של הפוטר */
 .shopping-list-footer {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative; /* שינוי מ-absolute ל-relative */
+    width: 100%;
+    display: flex;
+    justify-content: right;
+    margin-top: auto; /* ידחוף את התמונה לתחתית */
 }
-  
+
 .shopping-list-footer img {
     width: 100px;
-    margin-left: 300px; 
 }
+
 
 .download-btn {
     display: flex;

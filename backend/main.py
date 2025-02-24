@@ -812,7 +812,7 @@ async def get_current_user(
             print("❌ User not found")
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        return {"id": user.id, "last_name": user.last_name, "username": user.username, "username": user.username, "email": user.email}
+        return {"id": user.id, "last_name": user.last_name, "first_name": user.first_name, "username": user.username, "email": user.email}
 
     except jwt.ExpiredSignatureError:
         print("❌ Token expired")

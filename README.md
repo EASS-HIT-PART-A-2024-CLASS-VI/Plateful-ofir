@@ -1,6 +1,5 @@
 ![Plateful Logo](./frontend/src/assets/logo.png)
 
-
 **Plateful** is a recipe management system that enables users to create, share, and organize recipes while catering to dietary preferences and managing shopping lists. The API provides robust features like automatic nutrition calculation, user profiles, customizable dietary preferences (e.g., vegan, gluten-free), and shopping list generation.
 
 Built with **FastAPI** and **Docker**, Plateful is designed to be scalable, maintainable, and developer-friendly.
@@ -52,8 +51,8 @@ Below is the high-level system architecture of Plateful:
 
 ![Architecture Diagram](./frontend/src/assets/Architecture-image.png)
 
-
 💡 **Component Breakdown:**
+
 - **React** - User interface for managing recipes.
 - **FastAPI** - API layer handling business logic and user requests.
 - **PostgreSQL** - Database for storing user and recipe data.
@@ -104,9 +103,9 @@ C:/
 
 Ensure you have the following installed:
 
-- **Docker** 🐳 
-- **Python 3.9+** 
-- **Node.js & npm** 
+- **Docker** 🐳
+- **Python 3.9+**
+- **Node.js & npm**
 
 ### **Set Up Environment Variables**
 
@@ -123,6 +122,11 @@ DATABASE_URL=postgresql://postgres:password123@postgres:5432/plateful
 GEMINI_API_KEY=your_secret_key_here
 USDA_API_KEY=your_secret_key_here
 ```
+
+you can get your secret key from here:
+
+- **GEMINI_API_KEY**: 🔗 [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+- **USDA_API_KEY**: 🔗 [https://fdc.nal.usda.gov/api-key-signup](https://fdc.nal.usda.gov/api-key-signup)
 
 ---
 
@@ -146,10 +150,13 @@ USDA_API_KEY=your_secret_key_here
 ## **Testing** 🧪
 
 ### **Run All Tests**
+
 ```bash
 docker-compose backend pytest
 ```
+
 ### **Run Specific Tests**
+
 ```bash
 pytest backend/tests/test_recipes.py  # Test recipes functionality
 pytest backend/tests/test_users.py    # Test user authentication
@@ -178,4 +185,3 @@ For a complete list of API endpoints and usage examples, see the [API Reference]
 🔗 GitHub: [ofir8530](https://github.com/ofir8530)
 
 ---
-
