@@ -1031,3 +1031,16 @@
   z-index: 1000;
   font-size: 22px;
 }
+
+@media (min-width: 768px) {
+  .ingredients-steps-container {
+    display: grid;
+    grid-template-columns: minmax(250px, 30%) minmax(500px, 70%);
+    gap: 2rem;
+    align-items: start;
+  }
+}
+
+.max-w-7xl {
+  max-width: 101rem !important;
+}

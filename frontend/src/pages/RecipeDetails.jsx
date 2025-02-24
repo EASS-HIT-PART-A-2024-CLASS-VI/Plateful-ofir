@@ -500,7 +500,7 @@ export default function RecipeDetails() {
       </div>
 
       {/* מרכיבים ושלבי הכנה */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+      <div className="grid ingredients-steps-container gap-8 mt-8">
         <div>
           <h2 className="text-2xl font-bold">🥦 מרכיבים</h2>
           <ul className="mt-4 list-disc pl-5">
@@ -553,7 +553,7 @@ export default function RecipeDetails() {
               );
 
               return (
-                <li key={index} className="text-lg flex items-center gap-4">
+                <li key={index} className="text-lg flex items-center">
                   {step}
                   {timer && (
                     <div className="flex items-center gap-2">
