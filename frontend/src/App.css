@@ -47,7 +47,7 @@
 }
 
 .search-input:focus {
-  border-color: #457B9D;
+  border-color: #457b9d;
   box-shadow: 0 0 10px rgba(69, 123, 157, 0.3);
 }
 
@@ -80,17 +80,16 @@
 }
 
 .recipe-carousel {
-  max-width: 700px; 
-  margin: 0 auto 40px; 
+  max-width: 700px;
+  margin: 0 auto 40px;
 }
 
 .carousel-slide img {
   width: 100%;
-  height: 350px; 
-  object-fit: cover; 
+  height: 350px;
+  object-fit: cover;
   border-radius: 10px;
 }
-
 
 /* 🥗 תצוגת המתכונים */
 .recipe-grid {
@@ -126,7 +125,7 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-.filter-icon{
+.filter-icon {
   width: 24px;
   height: 24px;
 }
@@ -168,9 +167,9 @@
 }
 
 .filter-category-button.active {
-  background: #457B9D;
+  background: #457b9d;
   color: white;
-  border-color: #457B9D;
+  border-color: #457b9d;
 }
 
 .filter-grid {
@@ -209,7 +208,6 @@
   transform: scale(1.1);
 }
 
-
 .recipe-card {
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -239,7 +237,7 @@
   color: #333;
 }
 
-.recipe-category-icon{
+.recipe-category-icon {
   text-align: center;
   display: inline-flex;
   gap: 10px;
@@ -360,7 +358,7 @@
 
 .nutrition-label {
   font-size: 14px;
-  color: #254A5D;
+  color: #254a5d;
   margin-top: 5px;
 }
 
@@ -380,7 +378,7 @@
 .timer-button {
   display: flex;
   align-items: center;
-  gap: 8px; 
+  gap: 8px;
   padding: 10px 15px;
   border: none;
   border-radius: 8px;
@@ -391,7 +389,7 @@
 }
 
 .timer-icon {
-  width: 30px; 
+  width: 30px;
   height: 30px;
 }
 
@@ -407,15 +405,41 @@
   gap: 10px;
 }
 
-.play_again-button{
-  width: 20px; 
+.play_again-button {
+  width: 20px;
   height: 20px;
-  
+}
+
+/* שינוי מבנה התצוגה של המתכון כך שיתפרס בצורה נוחה */
+@media (min-width: 1024px) {
+  .recipe-details-container {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .ingredients-container {
+    max-width: 50%; /* המרכיבים לוקחים רק 25% מהמסך */
+  }
+
+  .steps-container {
+    max-width: 50%; /* השלבים תופסים 75% מהרוחב */
+  }
+
+  .comments-container {
+    width: 100%; /* התגובות מתפרסות לכל הרוחב */
+  }
+}
+
+/* הוספת גודל מקסימלי לתוכן */
+.recipe-content {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* 🔹 תיבת הוספת תגובה */
-.comment-input-container, .reply-box {
-  background-color: #F4F6F7;
+.comment-input-container,
+.reply-box {
+  background-color: #f4f6f7;
   padding: 12px;
   border-radius: 10px;
   max-width: 700px;
@@ -442,7 +466,8 @@
 }
 
 /* ✨ כפתור שליחת תגובה */
-.comment-submit-btn, .comment-submit {
+.comment-submit-btn,
+.comment-submit {
   background-color: #0073e6;
   color: white;
   padding: 10px 15px;
@@ -456,7 +481,8 @@
   width: fit-content;
 }
 
-.comment-submit-btn:hover, .comment-submit:hover {
+.comment-submit-btn:hover,
+.comment-submit:hover {
   background-color: #005bb5;
 }
 
@@ -468,7 +494,7 @@
   background-color: transparent;
   max-width: 600px;
   font-size: 18px;
-  color: #254A5D;
+  color: #254a5d;
   font-weight: 400;
   position: relative;
 }
@@ -479,9 +505,15 @@
 }
 
 /* 🔹 הוספת מרווח קטן לכל רמה של תגובה מקוננת */
-.comment-container.level-1 { margin-right: 20px; }
-.comment-container.level-2 { margin-right: 40px; }
-.comment-container.level-3 { margin-right: 60px; }
+.comment-container.level-1 {
+  margin-right: 20px;
+}
+.comment-container.level-2 {
+  margin-right: 40px;
+}
+.comment-container.level-3 {
+  margin-right: 60px;
+}
 
 /* 🔹 אזור פרטי המשתמש */
 .comment-header {
@@ -518,7 +550,6 @@
   font-size: 16px;
   line-height: 1.5;
 }
-
 
 /* 🔹 תגובות מקוננות */
 .nested-comments {
@@ -622,9 +653,8 @@
   font-weight: bold;
 }
 
-
 .open-modal-btn {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   padding: 10px 20px;
   border: none;
@@ -647,15 +677,15 @@
 /*עיצוב איזור אישי*/
 .header-container {
   display: flex;
-  justify-content: space-between; 
+  justify-content: space-between;
   align-items: center;
   width: 100%;
 }
 
-.recipe-container{
+.recipe-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); 
-  gap: 20px; 
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
@@ -664,7 +694,7 @@
 .create-recipe-button {
   display: flex;
   align-items: center;
-  gap: 8px; 
+  gap: 8px;
   background-color: #7bbef8;
   color: rgb(0, 0, 0);
   padding: 5px 10px;
@@ -673,12 +703,11 @@
   font-size: 16px;
   font-weight: bold;
   transition: 0.3s;
-  align-self: flex-start; 
-  }
-  
+  align-self: flex-start;
+}
 
 .create-recipe-button img {
-  width: 20px; 
+  width: 20px;
   height: 20px;
 }
 
@@ -780,7 +809,7 @@
 .form-input {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #d1d5db;
   border-radius: 0.25rem;
 }
 
@@ -788,7 +817,7 @@
 .form-input-small {
   width: 8rem;
   padding: 0.5rem;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #d1d5db;
   border-radius: 0.25rem;
 }
 
@@ -818,19 +847,19 @@
 
 /* Delete button styles */
 .btn-delete {
-  background-color: #EF4444;
+  background-color: #ef4444;
   padding: 0.25rem 0.5rem;
 }
 
 /* Add button styles */
 .btn-add {
-  background-color: #10B981;
+  background-color: #10b981;
   width: 10rem;
 }
 
 /* Submit button styles */
 .btn-submit {
-  background-color: #3B82F6;
+  background-color: #3b82f6;
   width: 100%;
 }
 
@@ -851,7 +880,7 @@
   width: 24px;
   height: 24px;
   vertical-align: middle;
-  margin-left: 8px; 
+  margin-left: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -979,7 +1008,7 @@
   margin-left: 10px;
 }
 
-.sendIcon{
+.sendIcon {
   width: 23px;
   height: 23px;
 }
