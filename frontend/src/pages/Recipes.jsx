@@ -4,7 +4,6 @@ import filterIcon from "../assets/icons/filter-image.png";
 import timeIcon from '../assets/icons/time-image.png';
 import categoriesIcon from '../assets/icons/category-image.png';
 import RatingStars from "../components/RatingStars"; 
-import clearFilters from "../assets/icons/clear-filter-image.png"
 import tagsIcon from '../assets/icons/tag-image.png';
 import starIcon from '../assets/icons/star-image.png';
 
@@ -15,9 +14,11 @@ export default function Recipes() {
   const [filteredRecipes, setFilteredRecipes] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedtag, setSelectedtag] = useState("");
   const [selectedRating, setSelectedRating] = useState(null);
   const [hoveredRating, setHoveredRating] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [tags, settags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -34,6 +35,9 @@ export default function Recipes() {
         console.log("📌 נתוני API:", data);
         const uniqueCategories = [...new Set(data.map((r) => r.categories))];
         setCategories(uniqueCategories);
+
+      const uniquetags = [...new Set(data.map((r) => r.tags))];
+      settags(uniquetags);
       })
       .catch((error) => {
         setError(error.message);
@@ -55,6 +59,11 @@ export default function Recipes() {
         recipe.categories.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
+    if (selectedtag) {
+      filtered = filtered.filter((recipe) =>
+        recipe.tags.toLowerCase() === selectedtag.toLowerCase()
+      );
+    }
 
     if (selectedRating !== null) {
       filtered = filtered.filter(
@@ -63,7 +72,7 @@ export default function Recipes() {
     }
 
     setFilteredRecipes(filtered);
-  }, [searchTerm, selectedCategory, selectedRating, recipes]);
+  }, [searchTerm, selectedCategory,selectedtag, selectedRating, recipes]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -85,11 +94,12 @@ export default function Recipes() {
   const clearAllFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
+    setSelectedtag("")
     setSelectedRating(null);
     setHoveredRating(null);
   };
 
-  const hasActiveFilters = searchTerm || selectedCategory || selectedRating !== null;
+  const hasActiveFilters = searchTerm || selectedCategory || selectedtag ||selectedRating !== null;
 
   if (loading)
     return <p className="text-center mt-10 text-blue-500">טוען מתכונים...</p>;
@@ -136,12 +146,6 @@ export default function Recipes() {
                 zIndex: 1000
               }}
             >
-              {hasActiveFilters && (
-                <button onClick={clearAllFilters} className="clear-filter">
-                  <img src={clearFilters} alt="ניקוי" className="icon-style" />
-                </button>
-              )}
-
               <div className="filter-section">
                 <h4 className="filter-title">קטגוריות</h4>
                 <div className="filter-grid">
@@ -156,6 +160,22 @@ export default function Recipes() {
                       }`}
                     >
                       {category}
+                    </button>
+                  ))}
+                </div>
+                <h4 className="filter-title">תגיות</h4>
+                <div className="filter-grid">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() =>
+                        setSelectedtag(selectedtag === tag ? "" : tag)
+                      }
+                      className={`filter-category-button ${
+                        selectedtag === tag ? "active" : ""
+                      }`}
+                    >
+                      {tag}
                     </button>
                   ))}
                 </div>

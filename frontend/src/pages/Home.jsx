@@ -80,7 +80,7 @@ const sliderSettings = {
 
     {/* 🏷️ קטגוריות */}
     <div className="category-buttons">
-      {["ארוחת בוקר", "ארוחת צהריים", "ארוחת ערב", "קינוחים", "בריא"].map((category) => (
+      {["ארוחת בוקר", "ארוחת צהריים", "ארוחת ערב", "קינוחים", "סלטים"].map((category) => (
         <button
           key={category}
           onClick={() => setSelectedCategory(selectedCategory === category ? "" : category)}
