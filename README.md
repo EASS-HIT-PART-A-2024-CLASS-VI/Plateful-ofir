@@ -166,8 +166,6 @@ pytest backend/tests/test_users.py    # Test user authentication
 
 ## **Demo Video** 🎥
 
-_A video demonstrating the system will be added here._
-
 [![Watch Demo](https://youtu.be/Zsxy7hw37fw)
 
 ---
