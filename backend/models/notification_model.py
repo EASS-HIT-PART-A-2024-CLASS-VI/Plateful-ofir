@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from models.base import Base
 
+# Notification model for storing user notifications.
 class Notification(Base):
     __tablename__ = "notifications"
 
@@ -13,4 +14,5 @@ class Notification(Base):
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Relationship with the User model.
     user = relationship("User", back_populates="notifications")

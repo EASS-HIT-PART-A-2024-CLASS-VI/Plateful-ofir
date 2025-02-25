@@ -8,20 +8,16 @@ import redis
 # Connect to Redis for timers
 redis_client = redis.Redis(host='redis', port=6379, db=0)
 
-# Function to create a new recipe
 def create_recipe(db: Session, recipe_data: dict):
-    """Creates a new recipe and saves it to the database, including its ingredients and nutrition."""
-    
+    """Create a new recipe, including its ingredients and nutrition."""
     ingredients_data = recipe_data.pop("ingredients", [])
     timers_data = recipe_data.pop("timers", [])
 
-    # יצירת מתכון חדש
     recipe = Recipe(**recipe_data)
     db.add(recipe)
     db.commit()
     db.refresh(recipe)
 
-    # שמירת מרכיבים
     for ingredient in ingredients_data:
         new_ingredient = Ingredient(
             name=ingredient["name"],
@@ -36,19 +32,16 @@ def create_recipe(db: Session, recipe_data: dict):
             recipe_id=recipe.id,
             step_number=timer["step_number"],
             duration=timer["duration"],
-            label=timer.get("label", f"שלב {timer['step_number']}")  # ברירת מחדל לתיאור
+            label=timer.get("label", f"Step {timer['step_number']}")
         )
         db.add(new_timer)
 
     db.commit()
     db.refresh(recipe)  
 
-    # ✅ בדיקה אם הערכים התזונתיים מחושבים
-    print(f"🧮 Calling calculate_nutritional_info() for recipe {recipe.id}")
-
+    print(f"Calling calculate_nutritional_info() for recipe {recipe.id}")
     nutrition_data = calculate_nutritional_info(ingredients_data, recipe.servings)
-
-    print(f"📊 Nutrition calculated: {nutrition_data}")
+    print(f"Nutrition calculated: {nutrition_data}")
 
     if nutrition_data:
         new_nutritional_info = NutritionalInfo(
@@ -59,19 +52,16 @@ def create_recipe(db: Session, recipe_data: dict):
             fats=nutrition_data["fats"],
         )
 
-    print(f"📊 Nutrition data received from API: {nutrition_data}")
+    print(f"Nutrition data received from API: {nutrition_data}")
 
     if not nutrition_data:
-        print("❌ Nutrition data is empty! Skipping database insertion.")
-
+        print("Nutrition data is empty! Skipping database insertion.")
         db.add(new_nutritional_info)
         db.commit()
         db.refresh(new_nutritional_info)
 
     return recipe
 
-
-# Function to get recipes by category or tag
 def filter_recipes(db: Session, category: Optional[str] = None, tag: Optional[str] = None) -> List[Recipe]:
     query = db.query(Recipe)
     if category:
@@ -80,7 +70,6 @@ def filter_recipes(db: Session, category: Optional[str] = None, tag: Optional[st
         query = query.filter(Recipe.tags.like(f"%{tag}%"))
     return query.all()
 
-# Function to create a user profile
 def create_user(db: Session, user_data):
     user = UserProfile(**user_data.dict())
     db.add(user)
@@ -88,7 +77,6 @@ def create_user(db: Session, user_data):
     db.refresh(user)
     return user
 
-# Function to handle timers
 def start_timer(timer_id: str, duration: int):
     redis_client.set(timer_id, duration)
     redis_client.expire(timer_id, duration)
@@ -98,5 +86,3 @@ def get_timer(timer_id: str):
     if time_left:
         return {"time_left": time_left.decode("utf-8")}
     return {"message": "Timer not found"}
-
-

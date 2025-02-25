@@ -51,14 +51,18 @@ export default function RecipeDetails() {
     }
   }, [id]);
 
+  // Function to fetch recipe data from the API
   const fetchRecipe = async () => {
     try {
+      // Fetch recipe details by ID
       const response = await fetch(`/api/recipes/${id}`);
       if (!response.ok)
-        throw new Error(`שגיאה בקבלת המתכון. סטטוס: ${response.status}`);
+        throw new Error(`Error fetching recipe. Status: ${response.status}`);
       const data = await response.json();
 
-      console.log("📥 נתוני מתכון שהתקבלו:", data);
+      console.log("📥 Recipe data received:", data);
+
+      // Update state with recipe details
       setRecipe(data);
       setServings(data.servings);
       setScaledNutrition(data.nutritional_info);
@@ -67,7 +71,7 @@ export default function RecipeDetails() {
       setRating(data.rating || 0.0);
       setLoading(false);
     } catch (error) {
-      console.error("❌ שגיאה בשליפת מתכון:", error);
+      console.error("❌ Error fetching recipe:", error);
       setError(error.message);
       setLoading(false);
     }
@@ -76,61 +80,64 @@ export default function RecipeDetails() {
   const fetchComments = async () => {
     try {
       if (!id) return;
+      // Fetch recipe comments
       const response = await fetch(`/api/recipes/${id}/comments`);
-      if (!response.ok) throw new Error("שגיאה בשליפת תגובות");
+      if (!response.ok) throw new Error("Error fetching comments");
       const data = await response.json();
       setComments(data);
     } catch (error) {
-      console.error("❌ שגיאה בשליפת תגובות:", error);
+      console.error("❌ Error fetching comments:", error);
     }
   };
 
-  // הוספת תגובה ראשית (למתכון)
+  // Function to add a new primary comment to the recipe
   const handleAddComment = async () => {
     try {
-      if (!userId) return alert("יש להתחבר כדי להגיב!");
+      if (!userId) return alert("You need to be logged in to comment!");
       if (!id) return;
       if (!newComment.trim()) {
-        alert("לא ניתן לשלוח תגובה ריקה");
+        alert("Comment cannot be empty");
         return;
       }
+      // Send request to add a new comment
       const response = await fetch(`/api/recipes/${id}/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId,
-          username: newCommentName || "אנונימי",
+          username: newCommentName || "Anonymous",
           content: newComment,
         }),
       });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "שגיאה בהוספת תגובה");
+        throw new Error(errorData.detail || "Error adding comment");
       }
+      // Reset input fields and refresh comments
       setNewComment("");
       setNewCommentName("");
-      toast.success("✅ תגובה נוספה!");
+      toast.success("✅ Comment added!");
       fetchComments();
     } catch (error) {
-      console.error("❌ שגיאה בהוספת תגובה:", error);
-      toast.error("❌ לא ניתן להוסיף תגובה.");
+      console.error("❌ Error adding comment:", error);
+      toast.error("❌ Could not add comment.");
     }
   };
 
-  // טיפול בשליחת תגובת reply – onReply מופעל בתוך רכיב CommentItem
+  // Handle sending a reply to an existing comment
   const handleReply = async (parentCommentId, replyText, replyName) => {
     if (!userId) {
-      alert("יש להתחבר כדי להגיב!");
+      alert("You need to be logged in to reply!");
       return;
     }
 
     const payload = {
       user_id: userId,
-      username: replyName || "אנונימי",
+      username: replyName || "Anonymous",
       content: replyText,
     };
 
-    console.log("📤 שולח תגובת reply:", payload); // ✅ הדפסת הנתונים שנשלחים לשרת
+    console.log("📤 Sending reply:", payload);
 
     try {
       const response = await fetch(
@@ -145,19 +152,19 @@ export default function RecipeDetails() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("❌ שגיאה בשליחת תגובה:", data); // ✅ הדפס שגיאה מפורטת
-        throw new Error(data.detail || "שגיאה בשליחת תגובה");
+        console.error("❌ Error sending reply:", data);
+        throw new Error(data.detail || "Error sending reply");
       }
 
-      toast.success("✅ תגובתך נוספה!");
+      toast.success("✅ Your reply has been added!");
       fetchComments();
     } catch (error) {
-      console.error("❌ שגיאה בשליחת תגובה:", error);
-      toast.error("❌ לא ניתן לשלוח תגובה.");
+      console.error("❌ Error sending reply:", error);
+      toast.error("❌ Could not send reply.");
     }
   };
 
-  // פונקציה לבניית עץ תגובות מקונן מתוך מערך תגובות שטוח
+  // Function to build a nested comment structure from a flat array
   function buildCommentTree(allComments) {
     const map = {};
     allComments.forEach((c) => {
@@ -181,9 +188,9 @@ export default function RecipeDetails() {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
-  // 🔥 פונקציה להתחלת טיימר
+  // Start a cooking timer for a specific step
   const startTimer = (stepNumber, durationInMinutes) => {
-    // ✅ אם כבר יש טיימר רץ, ננקה אותו
+    // If there's already a running timer, clear it
     if (activeTimers[`${stepNumber}_interval`]) {
       clearInterval(activeTimers[`${stepNumber}_interval`]);
     }
@@ -191,20 +198,20 @@ export default function RecipeDetails() {
     let remainingTime =
       activeTimers[stepNumber] > 0
         ? activeTimers[stepNumber]
-        : durationInMinutes * 60; // ✅ תמיכה בהמשך מטיימר מוקפא
+        : durationInMinutes * 60;
     setActiveTimers((prev) => ({
       ...prev,
       [stepNumber]: remainingTime,
-      [`${stepNumber}_paused`]: false, // ✅ מסיר מצב הקפאה אם היה קיים
+      [`${stepNumber}_paused`]: false, // Remove paused state if it exists
     }));
 
     const interval = setInterval(() => {
       setActiveTimers((prev) => {
-        if (prev[`${stepNumber}_paused`]) return prev; // ✅ לא מוריד זמן אם הטיימר מוקפא
+        if (prev[`${stepNumber}_paused`]) return prev; // Don't reduce time if paused
 
         if (prev[stepNumber] <= 1) {
           clearInterval(interval);
-          playBeepSound(); // ✅ השמעת צליל בסוף הטיימר
+          playBeepSound(); // Play sound at the end of the timer
           return { ...prev, [stepNumber]: 0, [`${stepNumber}_interval`]: null };
         }
         return { ...prev, [stepNumber]: prev[stepNumber] - 1 };
@@ -217,30 +224,30 @@ export default function RecipeDetails() {
     }));
   };
 
-  // ✅ פונקציה להפעלת צליל בסיום טיימר
+  // Play sound when the timer finishes
   const playBeepSound = () => {
     const audio = new Audio(beepSound);
     audio
       .play()
-      .catch((error) => console.error("❌ שגיאה בהפעלת צליל:", error));
+      .catch((error) => console.error("❌ Error playing sound:", error));
   };
 
-  // ✅ פונקציה להקפאת הטיימר
+  // Pause or resume a timer
   const pauseTimer = (stepNumber) => {
     if (activeTimers[`${stepNumber}_paused`]) {
-      // ✅ חידוש הטיימר שהופסק
+      // Resume paused timer
       startTimer(stepNumber, activeTimers[stepNumber] / 60);
     } else {
-      // ✅ עצירת הטיימר
+      // Pause the running timer
       clearInterval(activeTimers[`${stepNumber}_interval`]);
       setActiveTimers((prev) => ({
         ...prev,
-        [`${stepNumber}_paused`]: true, // ✅ סימון כטיימר מוקפא
+        [`${stepNumber}_paused`]: true,
       }));
     }
   };
 
-  // ✅ פונקציה לעצירת הטיימר
+  // Stop the timer completely
   const stopTimer = (stepNumber) => {
     if (activeTimers[`${stepNumber}_interval`]) {
       clearInterval(activeTimers[`${stepNumber}_interval`]);
@@ -253,14 +260,14 @@ export default function RecipeDetails() {
     }));
   };
 
-  // ✅ פורמט להצגת זמן בשניות כ-`MM:SS`
+  // Format time display to MM:SS
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
   };
 
-  // ✅ בקשה ל-API כדי לקבל את הכמויות המעודכנות
+  // Scale ingredients based on the new serving size
   const scaleIngredients = (newServings) => {
     if (!originalIngredients || !recipe) return;
     const factor = newServings / recipe.servings;
@@ -272,7 +279,7 @@ export default function RecipeDetails() {
     );
   };
 
-  // ✅ חישוב ערכים תזונתיים באופן מקומי לפי כמות המנות
+  // Scale nutritional values based on servings
   const getScaledNutrition = (newServings) => {
     if (!recipe || !recipe.nutritional_info) return;
     const factor = newServings / recipe.servings;
@@ -284,52 +291,54 @@ export default function RecipeDetails() {
     });
   };
 
-  // ✅ שינוי מספר מנות – מבצע חישוב חדש מול השרת
+  // Update servings, ingredients, and nutrition dynamically
   const handleServingsChange = (e) => {
     const newServings = parseInt(e.target.value);
     setServings(newServings);
-    scaleIngredients(newServings); // ✅ שינוי הכמויות של המרכיבים
-    getScaledNutrition(newServings); // ✅ עדכון הערכים התזונתיים
+    scaleIngredients(newServings);
+    getScaledNutrition(newServings);
   };
 
-  if (!recipe) return <p className="text-center mt-10">🔄 טוען מתכון...</p>;
-  if (error)
-    return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;
-
+  // ✅ Function to handle rating a recipe
   const handleRateRecipe = async (score) => {
-    if (!recipe) return;
+    if (!recipe) return; // Ensure recipe exists before proceeding
     const userId = localStorage.getItem("user_id");
     if (!userId) {
-      alert("חייבים להתחבר כדי לדרג!");
+      alert("You must be logged in to rate!");
       return;
     }
     try {
+      // Send the rating request to the server
       const response = await fetch(`/api/recipes/${recipe.id}/rate/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: parseInt(userId), score }),
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP Error ${response.status}`);
-      }
+
       const data = await response.json();
-      // data.average_rating
+
+      if (!response.ok) {
+        console.error("❌ Error rating recipe:", data);
+        throw new Error(data.detail || `HTTP Error ${response.status}`);
+      }
+
+      // ✅ Update recipe rating and display new average rating
       setRecipe((prev) => ({
         ...prev,
-        rating: data.average_rating, // עדכון הממוצע
+        rating: data.average_rating, // Update rating in state
       }));
-      setRating(data.average_rating);
-      setUserRating(score);
+      setRating(data.average_rating); // Update rating state
+
       alert(
-        `דירוגך נשמר! הדירוג הממוצע כעת הוא: ${data.average_rating.toFixed(2)}`
+        `Your rating has been saved! The new average rating is: ${data.average_rating.toFixed(
+          2
+        )}`
       );
     } catch (err) {
       console.error("Rating error:", err);
-      alert("שגיאה בעת שמירת הדירוג");
+      alert("Error saving rating");
     }
   };
-
   const handleFindSubstitute = async (ingredientName) => {
     // 1. פותחים את הצ'אט
     setIsChatOpen(true);
@@ -400,17 +409,22 @@ export default function RecipeDetails() {
     }
   };
 
+  // Display loading state while fetching the recipe
   if (loading)
-    return <p className="text-center mt-10 text-blue-500">טוען מתכון...</p>;
+    return <p className="text-center mt-10 text-blue-500">Loading recipe...</p>;
+
+  // Display error message if fetching the recipe failed
   if (error)
-    return <p className="text-center text-red-500 mt-10">שגיאה: {error}</p>;
+    return <p className="text-center text-red-500 mt-10">Error: {error}</p>;
+
+  // Display a message if no recipe is found
   if (!recipe)
-    return <p className="text-center text-gray-500 mt-10">מתכון לא נמצא.</p>;
+    return <p className="text-center text-gray-500 mt-10">Recipe not found.</p>;
 
   return (
     <div className="max-w-7xl mx-auto p-8 w-full">
       <div className="flex flex-col md:flex-row items-start gap-8">
-        {/* תמונת מתכון */}
+        {/* Recipe Image Section */}
         <div className="w-full md:w-1/2 relative">
           <img
             src={`/api${recipe.image_url}`}
@@ -418,14 +432,14 @@ export default function RecipeDetails() {
             className="rounded-xl shadow-md w-full"
           />
 
-          {/* 🔹 כפתור שיתוף בפינה הימנית העליונה */}
+          {/* 🔹 Share Button in the top right corner */}
           <div className="absolute top-4 right-4 bg-gray-200 bg-opacity-50 rounded-full">
             <button onClick={() => setShowShareInput(!showShareInput)}>
               <img src={shareIcon} alt="Share" className="w-8 h-8" />
             </button>
           </div>
 
-          {/* 🔹 טופס שיתוף (יופיע רק כאשר `showShareInput` = true) */}
+          {/* 🔹 Share Form (Appears only when `showShareInput` = true) */}
           {showShareInput && (
             <div className="absolute top-14 right-4 bg-white shadow-lg rounded-lg p-4 w-60">
               <input
@@ -439,22 +453,22 @@ export default function RecipeDetails() {
                 onClick={handleShareRecipe}
                 className="bg-blue-500 text-white px-4 py-2 rounded mt-2 w-full"
               >
-                שתף
+                Share
               </button>
             </div>
           )}
         </div>
 
-        {/* פרטי מתכון */}
+        {/* Recipe Details Section */}
         <div className="recipe-details-container">
           <h1 className="recipe-title">{recipe.name}</h1>
           <p className="recipe-category">{recipe.categories}</p>
           <div className="tag-container">
-            <img src={tagicon} alt="tags icon" className="tag-icon" />
+            <img src={tagicon} alt="Tags icon" className="tag-icon" />
             <p className="recipe-tags">{recipe.tags}</p>
           </div>
 
-          {/* אזור זמן הכנה, מספר מנות ושאר המידע */}
+          {/* Preparation Time, Servings, and Additional Info */}
           <div className="recipe-meta">
             <div className="recipe-info-item">
               <img
@@ -466,7 +480,7 @@ export default function RecipeDetails() {
             </div>
             <div className="recipe-info-item">
               <img src={servingIcon} alt="Servings" className="icon-style" />
-              <label> מספר מנות:</label>
+              <label> כמות מנות:</label>
               <input
                 type="number"
                 min="1"
@@ -477,7 +491,7 @@ export default function RecipeDetails() {
             </div>
           </div>
 
-          {/* ערכים תזונתיים - שורה אחת מתחת */}
+          {/* Nutritional values - displayed in a row below */}
           <div className="nutrition-section">
             <div className="nutrition-grid">
               {scaledNutrition ? (
@@ -492,14 +506,16 @@ export default function RecipeDetails() {
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500">🔄 מחשב ערכים תזונתיים...</p>
+                <p className="text-gray-500">
+                  🔄 Calculating nutritional values...
+                </p>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* מרכיבים ושלבי הכנה */}
+      {/* Ingredients and preparation steps */}
       <div className="grid ingredients-steps-container gap-8 mt-8">
         <div>
           <h2 className="text-2xl font-bold">🥦 מרכיבים</h2>
@@ -511,6 +527,7 @@ export default function RecipeDetails() {
                     {ingredient.name} - {ingredient.quantity} {ingredient.unit}
                   </span>
 
+                  {/* Find substitute button */}
                   <button
                     onClick={() => handleFindSubstitute(ingredient.name)}
                     className="substitute-btn"
@@ -525,10 +542,11 @@ export default function RecipeDetails() {
                 </li>
               ))
             ) : (
-              <p>אין מרכיבים</p>
+              <p>No ingredients</p>
             )}
           </ul>
-          {/* כפתור "צור רשימת קניות" */}
+
+          {/* "Create Shopping List" Button */}
           <button onClick={openModal} className="btn-create-shopping-list">
             צור רשימת קניות
           </button>
@@ -555,6 +573,8 @@ export default function RecipeDetails() {
               return (
                 <li key={index} className="text-lg flex items-center">
                   {step}
+
+                  {/* Timer buttons (only if a timer exists for this step) */}
                   {timer && (
                     <div className="flex items-center gap-2">
                       <button
@@ -573,6 +593,7 @@ export default function RecipeDetails() {
 
                       {activeTimers[stepNumber] > 0 && (
                         <>
+                          {/* Pause/Play Button */}
                           <button
                             onClick={() => pauseTimer(stepNumber)}
                             className="pause_play_button"
@@ -588,6 +609,7 @@ export default function RecipeDetails() {
                             />
                           </button>
 
+                          {/* Stop Timer Button */}
                           <button
                             onClick={() => stopTimer(stepNumber)}
                             className="stop_button"
@@ -601,6 +623,7 @@ export default function RecipeDetails() {
                         </>
                       )}
 
+                      {/* Restart Timer Button */}
                       {activeTimers[stepNumber] === 0 && (
                         <button
                           onClick={() => startTimer(stepNumber, timer.duration)}
@@ -621,21 +644,21 @@ export default function RecipeDetails() {
           </ul>
         </div>
 
-        {/* תגובות */}
+        {/* Comments Section */}
         <div className="mt-8 bg-gray-100 p-6 rounded-lg">
           <h2 className="text-2xl font-bold mb-4">💬 תגובות</h2>
 
-          {/* הצגת דירוג */}
-          <p>דירוג ממוצע: {recipe.rating.toFixed(2)}</p>
+          {/* Display average rating */}
+          <p> דירוג ממוצע: {recipe.rating.toFixed(2)}</p>
           <div className="recipe-rating">
             <RatingStars
               currentRating={userRating}
               onRate={handleRateRecipe}
-              readOnly={false} // ✅ מאפשר למשתמש לדרג
+              readOnly={false} // ✅ Allows user to rate
             />
           </div>
 
-          {/* 🔹 הצגת התגובות */}
+          {/* 🔹 Display Comments */}
           {commentTree.length > 0 ? (
             commentTree.map((comment) => (
               <div
@@ -651,15 +674,15 @@ export default function RecipeDetails() {
             <p className="text-gray-500">אין תגובות</p>
           )}
 
-          {/* 🔹 כפתור הוספת תגובה */}
+          {/* 🔹 Toggle Add Comment Form */}
           <button
             onClick={() => setShowCommentForm(!showCommentForm)}
             className="comment-toggle-btn"
           >
-            {showCommentForm ? "ביטול" : "הוסף תגובה"}
+            {showCommentForm ? "בטל" : "הוסף תגובה"}
           </button>
 
-          {/* 🔹 טופס הוספת תגובה (יופיע רק אם showCommentForm = true) */}
+          {/* 🔹 Add Comment Form (Only Appears if showCommentForm = true) */}
           {showCommentForm && (
             <div className="comment-input-container">
               <input
@@ -679,14 +702,14 @@ export default function RecipeDetails() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* צ'אט */}
-      <ChatDrawer
-        ref={chatDrawerRef}
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-      />
+        {/* Chat Drawer */}
+        <ChatDrawer
+          ref={chatDrawerRef}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+        />
+      </div>
     </div>
   );
 }

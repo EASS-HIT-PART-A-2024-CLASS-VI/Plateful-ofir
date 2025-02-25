@@ -8,7 +8,7 @@ const ShoppingListImage = ({ ingredients, onClose }) => {
   const listRef = useRef(null);
   const [checkedItems, setCheckedItems] = useState(new Set());
 
-  // ✅ עדכון סטייט בלחיצה על הצ'קבוקס
+  // Update state when a checkbox is toggled
   const handleItemToggle = (itemName) => {
     setCheckedItems((prev) => {
       const newSet = new Set(prev);
@@ -24,10 +24,9 @@ const ShoppingListImage = ({ ingredients, onClose }) => {
   const handleDownloadImage = async () => {
     if (!listRef.current) return;
 
-    // יצירת עותק של האלמנט מבלי המוצרים שסומנו
+    // Clone the list and remove items that are checked
     const filteredList = listRef.current.cloneNode(true);
     const items = filteredList.querySelectorAll(".shopping-list-item");
-
     items.forEach((item) => {
       const label = item.querySelector("label");
       if (checkedItems.has(label.textContent.split(" - ")[0])) {
@@ -48,10 +47,10 @@ const ShoppingListImage = ({ ingredients, onClose }) => {
   return (
     <div className="shopping-list-container-small">
       <div ref={listRef} className="shopping-list-paper">
-        {/* כותרת רשימת קניות */}
+        {/* Shopping list header */}
         <div className="shopping-list-header">🛒 רשימת קניות</div>
 
-        {/* רשימת המצרכים */}
+        {/* Ingredients list */}
         <ul className="shopping-list-items">
           {ingredients.map((item, index) => (
             <li key={index} className="shopping-list-item">
@@ -67,19 +66,18 @@ const ShoppingListImage = ({ ingredients, onClose }) => {
           ))}
         </ul>
 
-        {/* תמונת הדמות עם העגלה - חלק מהרקע הצהוב */}
+        {/* Footer image */}
         <div className="shopping-list-footer">
           <img src={shoppingPhoto} alt="Shopping cart guy" />
         </div>
-        </div>
+      </div>
 
-        <div className="download-btn-container"/>
-          <button onClick={handleDownloadImage}
-          >
-            <img src={downloadIcon} alt="Filter" className="download-icon" />
-          </button>
-        </div>
-    
+      <div className="download-btn-container">
+        <button onClick={handleDownloadImage}>
+          <img src={downloadIcon} alt="Download" className="download-icon" />
+        </button>
+      </div>
+    </div>
   );
 };
 

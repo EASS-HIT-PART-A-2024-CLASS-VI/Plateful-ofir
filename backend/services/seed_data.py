@@ -1,7 +1,7 @@
 import sys
 import os
 
-# הוספת הנתיב של התיקייה הראשית כדי שהייבוא יעבוד
+# Add the root directory to the system path for proper imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sqlalchemy.orm import Session
@@ -14,17 +14,17 @@ from services.timer_service import start_timer
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-STATIC_RECIPE_DIR = "static"  
-os.makedirs(STATIC_RECIPE_DIR, exist_ok=True) 
+STATIC_RECIPE_DIR = "static"
+os.makedirs(STATIC_RECIPE_DIR, exist_ok=True)
 
 def load_seed_data(db: Session):
     try:
         print("🚀 Starting seed data loading process...")
 
-        # אתחול מסד הנתונים אם הוא לא מאותחל
+        # Initialize the database
         init_db()
 
-        # בדיקה אם יש כבר משתמש אדמין
+        # Check if an admin user exists
         admin_user = db.query(User).filter(User.email == "admin@plateful.com").first()
         if not admin_user:
             hashed_password = pwd_context.hash("admin123")
@@ -40,13 +40,13 @@ def load_seed_data(db: Session):
             db.refresh(admin_user)
             print("✅ Admin user created successfully")
 
-        # בדיקה אם יש כבר מתכונים
+        # Skip seeding if there are already 5 or more recipes
         recipe_count = db.query(Recipe).count()
         if recipe_count >= 5:
             print(f"✅ Database already has {recipe_count} recipes. Skipping seed data.")
             return
 
-        # יצירת מתכוני ברירת מחדל
+        # Seed default recipes (seed_recipes should be defined with recipe data)
         seed_recipes = [
             {
                 "name": "שקשוקה",
@@ -699,8 +699,7 @@ def load_seed_data(db: Session):
                 }
             },
         ]
-
-        # הוספת מתכונים למסד הנתונים
+        #Add new recipe
         for recipe_data in seed_recipes:
             image_path = f"/static/{recipe_data['image_filename']}"
             new_recipe = Recipe(
@@ -714,18 +713,17 @@ def load_seed_data(db: Session):
                 image_url=image_path
             )
             db.add(new_recipe)
-            db.flush()  # לקבלת ID של המתכון
+            db.flush()  # Retrieve new recipe ID
 
             for ingredient in recipe_data["ingredients"]:
                 new_ingredient = Ingredient(
                     name=ingredient["name"],
                     quantity=ingredient["quantity"],
                     unit=ingredient["unit"],
-                    recipe_id=new_recipe.id  # ודא שהרכיב מקושר למתכון
+                    recipe_id=new_recipe.id
                 )
                 db.add(new_ingredient)
 
-            # ✅ הוספת טיימרים למתכון
             for timer in recipe_data["timers"]:
                 new_timer = CookingTimer(
                     recipe_id=new_recipe.id,
@@ -736,7 +734,6 @@ def load_seed_data(db: Session):
                 db.add(new_timer)
                 start_timer(f"recipe_{new_recipe.id}_step_{timer['step_number']}", timer["duration"])
 
-            # ✅ הוספת נתוני תזונה למתכון
             if "nutrition" in recipe_data:
                 nutrition_data = recipe_data["nutrition"]
                 new_nutrition = NutritionalInfo(
@@ -755,4 +752,3 @@ def load_seed_data(db: Session):
         print(f"❌ Error loading seed data: {str(e)}")
         db.rollback()
         raise
-

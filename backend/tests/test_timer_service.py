@@ -11,9 +11,7 @@ class TestTimerService:
         with patch('services.timer_service.redis_client', mock_redis):
             timer_id = "test_timer"
             duration = 300
-            
             start_timer(timer_id, duration)
-            
             mock_redis.set.assert_called_with(timer_id, duration)
             mock_redis.expire.assert_called_with(timer_id, duration)
 
@@ -21,7 +19,6 @@ class TestTimerService:
         with patch('services.timer_service.redis_client', mock_redis):
             timer_id = "test_timer"
             mock_redis.get.return_value = b"150"
-            
             result = get_timer(timer_id)
             assert result == {"time_left": "150"}
 

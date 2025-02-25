@@ -7,10 +7,12 @@ from models.recipe_model import Recipe, Ingredient, NutritionalInfo, CookingTime
 class TestRecipeService:
     @pytest.fixture
     def db_session(self):
+        # Fixture for a mocked database session
         return Mock(spec=Session)
 
     @pytest.fixture
     def sample_recipe_data(self):
+        # Sample recipe data for testing
         return {
             "name": "עוגת שוקולד",
             "ingredients": [
@@ -28,12 +30,14 @@ class TestRecipeService:
         }
 
     def test_create_recipe(self, db_session, sample_recipe_data):
+        # Set up mock behavior for session methods
         mock_recipe = Mock(spec=Recipe)
         mock_recipe.id = 1
         db_session.add.return_value = None
         db_session.commit.return_value = None
         db_session.refresh.return_value = None
         
+        # Patch the nutritional info calculation
         with patch('services.recipe_service.calculate_nutritional_info') as mock_calc:
             mock_calc.return_value = {
                 "calories": 350,
@@ -49,6 +53,7 @@ class TestRecipeService:
             assert mock_calc.call_count == 1
             
     def test_filter_recipes(self, db_session):
+        # Set up a mock query result for filtering recipes
         mock_recipes = [Mock(spec=Recipe), Mock(spec=Recipe)]
         db_session.query.return_value.filter.return_value.all.return_value = mock_recipes
         

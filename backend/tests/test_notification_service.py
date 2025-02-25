@@ -17,13 +17,11 @@ class TestNotificationService:
         user_id = 1
         message = "בדיקת התראה"
         
-        mock_notification = Mock(spec=Notification)
         db_session.add.return_value = None
         db_session.commit.return_value = None
         db_session.refresh.return_value = None
         
         result = create_notification(db_session, user_id, message)
-        
         assert db_session.add.called
         assert db_session.commit.called
 
@@ -41,5 +39,4 @@ class TestNotificationService:
         db_session.commit.return_value = None
         
         mark_notifications_as_read(db_session, user_id)
-        
         assert db_session.commit.called

@@ -94,8 +94,10 @@
 /* 🥗 תצוגת המתכונים */
 .recipe-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* ✅ 4 מתכונים בשורה */
-  gap: 20px; /* ✅ רווחים יפים */
+  grid-template-columns: repeat(4, 1fr);
+  /* ✅ 4 מתכונים בשורה */
+  gap: 20px;
+  /* ✅ רווחים יפים */
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
@@ -195,9 +197,12 @@
 
 .clear-filter {
   display: flex;
-  justify-content: flex-start; /* ✅ מיישר את הכפתור לשמאל */
-  width: 100%; /* מבטיח שהתוכן יתפוס את כל הרוחב */
-  margin-bottom: 10px; /* קצת רווח לפני שאר הפילטרים */
+  justify-content: flex-start;
+  /* ✅ מיישר את הכפתור לשמאל */
+  width: 100%;
+  /* מבטיח שהתוכן יתפוס את כל הרוחב */
+  margin-bottom: 10px;
+  /* קצת רווח לפני שאר הפילטרים */
   background: none;
   border: none;
   cursor: pointer;
@@ -290,6 +295,7 @@
   display: inline-flex;
   gap: 10px;
 }
+
 .recipe-rating {
   text-align: center;
   display: inline-flex;
@@ -370,7 +376,8 @@
 }
 
 .timer-icon {
-  width: 35px; /* ניתן לשנות בהתאם */
+  width: 35px;
+  /* ניתן לשנות בהתאם */
   height: 35px;
   cursor: pointer;
 }
@@ -418,15 +425,18 @@
   }
 
   .ingredients-container {
-    max-width: 50%; /* המרכיבים לוקחים רק 25% מהמסך */
+    max-width: 50%;
+    /* המרכיבים לוקחים רק 25% מהמסך */
   }
 
   .steps-container {
-    max-width: 50%; /* השלבים תופסים 75% מהרוחב */
+    max-width: 50%;
+    /* השלבים תופסים 75% מהרוחב */
   }
 
   .comments-container {
-    width: 100%; /* התגובות מתפרסות לכל הרוחב */
+    width: 100%;
+    /* התגובות מתפרסות לכל הרוחב */
   }
 }
 
@@ -508,9 +518,11 @@
 .comment-container.level-1 {
   margin-right: 20px;
 }
+
 .comment-container.level-2 {
   margin-right: 40px;
 }
+
 .comment-container.level-3 {
   margin-right: 60px;
 }
@@ -555,6 +567,7 @@
 .nested-comments {
   margin-top: 6px;
 }
+
 /* 🔹 הקטנת רווח בין תגובות */
 .comment-section {
   margin-bottom: 0px !important;
@@ -563,7 +576,8 @@
 
 /* 🔹 ביטול מרווח נוסף אם יש */
 .comment-container {
-  margin-bottom: 3px !important; /* להקטין מרווח בין תגובות */
+  margin-bottom: 3px !important;
+  /* להקטין מרווח בין תגובות */
   padding-bottom: 0px !important;
 }
 
@@ -622,6 +636,7 @@
   margin-bottom: 10px;
   font-size: 16px;
 }
+
 .download-btn-container {
   display: flex;
   justify-content: center;
@@ -668,10 +683,12 @@
 
 .ingredient-item {
   display: flex;
-  justify-content: space-between; /* מפזר את האלמנטים לצדדים */
+  justify-content: space-between;
+  /* מפזר את האלמנטים לצדדים */
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px dashed #bbb; /* קו הפרדה בין מצרכים */
+  border-bottom: 1px dashed #bbb;
+  /* קו הפרדה בין מצרכים */
 }
 
 /*עיצוב איזור אישי*/
@@ -723,7 +740,8 @@
   background: white;
   transition: box-shadow 0.2s ease-in-out;
   cursor: pointer;
-  padding: 10px; /* הכנסת הטקסט קצת פנימה */
+  padding: 10px;
+  /* הכנסת הטקסט קצת פנימה */
   text-align: right;
 }
 
@@ -756,14 +774,16 @@
 .recipe-info {
   display: flex;
   align-items: center;
-  gap: 8px; /* ✅ מוסיף רווח בין האייקון לטקסט */
+  gap: 8px;
+  /* ✅ מוסיף רווח בין האייקון לטקסט */
   font-size: 14px;
   color: #333;
   margin-bottom: 5px;
 }
 
 .info-icon {
-  width: 20px; /* ✅ גודל אחיד לאייקונים */
+  width: 20px;
+  /* ✅ גודל אחיד לאייקונים */
   height: 20px;
 }
 
@@ -903,7 +923,8 @@
 /* 🔹 Chat Drawer Styles */
 .chat-drawer {
   position: fixed;
-  right: -400px; /* Hidden by default */
+  right: -400px;
+  /* Hidden by default */
   top: 70px;
   bottom: 0;
   width: 400px;
@@ -911,12 +932,14 @@
   border-left: 1px solid #ccc;
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
   transition: right 0.3s ease-in-out;
-  direction: rtl; /* Ensures proper right-to-left alignment */
+  direction: rtl;
+  /* Ensures proper right-to-left alignment */
   z-index: 9999;
 }
 
 .chat-drawer.open {
-  right: 0; /* Show when open */
+  right: 0;
+  /* Show when open */
 }
 
 /* Chat Header */

@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, JSON, T
 from sqlalchemy.orm import relationship
 from models.base import Base
 
-# Association table for recipe sharing
+# Association table for recipe sharing.
 recipe_shares = Table('recipe_shares', Base.metadata,
     Column('recipe_id', Integer, ForeignKey('recipes.id')),
     Column('user_id', Integer, ForeignKey('users.id'))
@@ -37,7 +37,7 @@ class Ingredient(Base):
     name = Column(String, index=True)
     quantity = Column(Float)
     unit = Column(String)
-    nutritional_values = Column(JSON)  # Stores nutritional values per 100g/ml
+    nutritional_values = Column(JSON)  # Nutrition per 100g/ml.
     recipe_id = Column(Integer, ForeignKey('recipes.id'))
     
     recipe = relationship("Recipe", back_populates="ingredients")
@@ -54,15 +54,14 @@ class NutritionalInfo(Base):
     
     recipe = relationship("Recipe", back_populates="nutritional_info")
 
-
 class ShoppingList(Base):
     __tablename__ = 'shopping_lists'
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     recipe_id = Column(Integer, ForeignKey('recipes.id'))
-    items = Column(JSON)  # Stores shopping items with quantities
-    created_at = Column(String)  # ISO format date
+    items = Column(JSON)  # Items with quantities.
+    created_at = Column(String)  # ISO date.
     
     user = relationship("User", back_populates="shopping_lists")
     recipe = relationship("Recipe")
@@ -73,7 +72,7 @@ class CookingTimer(Base):
     id = Column(Integer, primary_key=True, index=True)
     recipe_id = Column(Integer, ForeignKey('recipes.id'))
     step_number = Column(Integer)
-    duration = Column(Integer)  # Duration in seconds
+    duration = Column(Integer)  # Duration in seconds.
     label = Column(String)
     
     recipe = relationship("Recipe", back_populates="cooking_timers")

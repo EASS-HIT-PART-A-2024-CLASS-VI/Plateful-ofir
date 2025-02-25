@@ -1,5 +1,5 @@
 import React from "react";
-import "./TypingIndicator.css"; // נייבא את ה-CSS
+import "./TypingIndicator.css";
 
 function TypingIndicator() {
   return (
