@@ -170,12 +170,6 @@ pytest backend/tests/test_users.py    # Test user authentication
 
 ---
 
-## **API Documentation** 📖
-
-For a complete list of API endpoints and usage examples, see the [API Reference](./docs/API.md).
-
----
-
 ## **Contact Info** 📬
 
 **Ofir Itskovich**  
